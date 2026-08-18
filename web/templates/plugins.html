@@ -1,0 +1,67 @@
+{{$fi := "w-full min-w-[7rem] rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-blue-200"}}
+{{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Plugins</h1>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">read-only</span>
+  <p>Plugins installed from your marketplaces.</p>
+</div>
+
+<div x-data="tableFilter(['name','marketplace','version','scope','enabled','installed','updated'])">
+  <div class="flex items-center gap-4 mb-2 text-sm text-gray-500 dark:text-gray-400">
+    <span x-text="visible + ' of ' + total + ' shown'"></span>
+    <label class="inline-flex items-center gap-1">Group by
+      <select x-model="groupKey" @change="collapsed={}; refresh()" class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-1.5 py-0.5 text-xs">
+        <option value="">None</option><option value="enabled">Enabled</option><option value="marketplace">Marketplace</option><option value="scope">Scope</option>
+      </select>
+    </label>
+    <button @click="clear()" class="ml-auto text-xs hover:text-gray-800 dark:hover:text-gray-100 underline">Clear filters</button>
+  </div>
+  <div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+        <tr>
+          <th class="{{$th}}" @click="sortBy('name')">Plugin <span x-show="sortKey==='name'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('marketplace')">Marketplace <span x-show="sortKey==='marketplace'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('version')">Version <span x-show="sortKey==='version'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('scope')">Scope <span x-show="sortKey==='scope'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('enabled')">Enabled <span x-show="sortKey==='enabled'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('installed')">Installed <span x-show="sortKey==='installed'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('updated')">Updated <span x-show="sortKey==='updated'" x-text="sortDir===1?'▲':'▼'"></span></th>
+        </tr>
+        <tr>
+          <th class="px-2 pb-2"><input x-model="filters.name" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.marketplace" @change="refresh()" class="{{$fi}}">
+              <option value="">all</option>
+              {{range .MarketplaceNames}}<option value="{{.}}">{{.}}</option>{{end}}
+            </select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.version" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.scope" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="project">project</option><option value="user">user</option></select>
+          </th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.enabled" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="disabled">disabled</option><option value="enabled">enabled</option></select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.installed" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2"><input x-model="filters.updated" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {{range .Plugins}}
+        <tr data-row data-name="{{lower .Base}} {{lower .ProjectPath}}" data-marketplace="{{lower .Marketplace}}" data-version="{{lower .Version}}" data-scope="{{lower .Scope}}" data-enabled="{{if .Enabled}}enabled{{else}}disabled{{end}}" data-installed="{{.Installed}}" data-updated="{{.Updated}}">
+          <td class="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{{.Base}}{{if .ProjectPath}}<span class="ml-2 font-mono text-xs text-gray-400">{{.ProjectPath}}</span>{{end}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.Marketplace}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{.Version}}</td>
+          <td class="px-3 py-1.5">
+            <span class="chip {{if eq .Scope "project"}}chip-amber{{else}}chip-blue{{end}}">{{.Scope}}</span>
+          </td>
+          <td class="px-3 py-1.5">{{if .Enabled}}<span class="chip chip-green">enabled</span>{{else}}<span class="chip chip-gray">disabled</span>{{end}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.Installed}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap {{if .UpdatedStale}}text-red-600 dark:text-red-400 font-medium{{else}}text-gray-500 dark:text-gray-400{{end}}" {{if .UpdatedStale}}title="updated more than 3 days ago"{{end}}>{{.Updated}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>

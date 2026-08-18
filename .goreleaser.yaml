@@ -1,0 +1,48 @@
+version: 2
+project_name: claudarium
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: claudarium
+    main: ./cmd/app
+    binary: claudarium
+    env:
+      - CGO_ENABLED=0 # pure Go — cross-compiles cleanly and emits LC_UUID on modern Go
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+# Publishes a formula to github.com/trco/homebrew-tap on each release.
+# Requires a HOMEBREW_TAP_GITHUB_TOKEN secret with write access to that repo.
+brews:
+  - name: claudarium
+    repository:
+      owner: trco
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/trco/claudarium"
+    description: "Local web UI to view and edit your Claude Code config"
+    license: "MIT"
+    install: |
+      bin.install "claudarium"
+    test: |
+      system "#{bin}/claudarium", "--version"
+
+release:
+  draft: false

@@ -1,0 +1,56 @@
+{{$fi := "w-full min-w-[7rem] rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-blue-200"}}
+{{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Marketplaces</h1>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">read-only</span>
+  <p>Plugin marketplaces Claude knows about, and where each one is sourced from.</p>
+</div>
+
+<div x-data="tableFilter(['name','source','location','auto','updated'])">
+  <div class="flex items-center gap-4 mb-2 text-sm text-gray-500 dark:text-gray-400">
+    <span x-text="visible + ' of ' + total + ' shown'"></span>
+    <label class="inline-flex items-center gap-1">Group by
+      <select x-model="groupKey" @change="collapsed={}; refresh()" class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-1.5 py-0.5 text-xs">
+        <option value="">None</option><option value="auto">Auto-update</option><option value="source">Source</option>
+      </select>
+    </label>
+    <button @click="clear()" class="ml-auto text-xs hover:text-gray-800 dark:hover:text-gray-100 underline">Clear filters</button>
+  </div>
+  <div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+        <tr>
+          <th class="{{$th}}" @click="sortBy('name')">Name <span x-show="sortKey==='name'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('source')">Source <span x-show="sortKey==='source'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('location')">Location <span x-show="sortKey==='location'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('auto')">Auto-update <span x-show="sortKey==='auto'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('updated')">Updated <span x-show="sortKey==='updated'" x-text="sortDir===1?'▲':'▼'"></span></th>
+        </tr>
+        <tr>
+          <th class="px-2 pb-2"><input x-model="filters.name" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.source" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="git">git</option><option value="github">github</option></select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.location" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.auto" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="no">no</option><option value="yes">yes</option></select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.updated" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {{range .Marketplaces}}
+        <tr data-row data-name="{{lower .Name}}" data-source="{{lower .SourceType}}" data-location="{{lower .Location}}" data-auto="{{if .AutoUpdate}}yes{{else}}no{{end}}" data-updated="{{.Updated}}">
+          <td class="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{{.Name}}</td>
+          <td class="px-3 py-1.5">
+            <span class="chip {{if eq .SourceType "github"}}chip-slate{{else}}chip-orange{{end}}">{{.SourceType}}</span>
+          </td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.Location}}</td>
+          <td class="px-3 py-1.5">{{if .AutoUpdate}}<span class="chip chip-green">yes</span>{{else}}<span class="chip chip-gray">no</span>{{end}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap {{if .UpdatedStale}}text-red-600 dark:text-red-400 font-medium{{else}}text-gray-500 dark:text-gray-400{{end}}" {{if .UpdatedStale}}title="updated more than 3 days ago"{{end}}>{{.Updated}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>

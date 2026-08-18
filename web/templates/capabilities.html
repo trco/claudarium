@@ -1,0 +1,67 @@
+{{$fi := "w-full min-w-[7rem] rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-blue-200"}}
+{{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Capabilities</h1>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">read-only</span>
+  <p>Every agent, skill and command Claude can use, from different sources.
+    <span class="text-gray-400 dark:text-gray-500">Click a row for full details.</span>
+  </p>
+</div>
+
+<div x-data="tableFilter(['name','kind','source','modified','desc'])">
+  <div class="flex items-center gap-4 mb-2 text-sm text-gray-500 dark:text-gray-400">
+    <span x-text="visible + ' of ' + total + ' shown'"></span>
+    <label class="inline-flex items-center gap-1">Group by
+      <select x-model="groupKey" @change="collapsed={}; refresh()" class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-1.5 py-0.5 text-xs">
+        <option value="">None</option><option value="kind">Kind</option><option value="source">Source</option>
+      </select>
+    </label>
+    <button @click="clear()" class="ml-auto text-xs hover:text-gray-800 dark:hover:text-gray-100 underline">Clear filters</button>
+  </div>
+  <div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+        <tr>
+          <th class="{{$th}}" @click="sortBy('name')">Name <span x-show="sortKey==='name'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('kind')">Kind <span x-show="sortKey==='kind'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('source')">Source <span x-show="sortKey==='source'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('modified')">Modified <span x-show="sortKey==='modified'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('desc')">Description <span x-show="sortKey==='desc'" x-text="sortDir===1?'▲':'▼'"></span></th>
+        </tr>
+        <tr>
+          <th class="px-2 pb-2"><input x-model="filters.name" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.kind" @change="refresh()" class="{{$fi}}">
+              <option value="">all</option><option value="agent">agent</option><option value="command">command</option><option value="skill">skill</option>
+            </select>
+          </th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.source" @change="refresh()" class="{{$fi}}">
+              <option value="">all</option>
+              {{range .Sources}}<option value="{{.}}">{{readable (sourceLabel .)}}</option>{{end}}
+            </select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.modified" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2"><input x-model="filters.desc" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {{range .Caps}}
+        <tr data-row data-name="{{lower .Name}}" data-kind="{{lower .Kind}}" data-source="{{lower .Source}}" data-modified="{{.Modified}}" data-desc="{{lower .Description}}"
+            data-detail='{{json .}}' @click="$store.drawer.show(JSON.parse($el.dataset.detail))"
+            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+          <td class="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{{.Name}}</td>
+          <td class="px-3 py-1.5">
+            <span class="chip {{if eq .Kind "agent"}}chip-amber{{else if eq .Kind "skill"}}chip-indigo{{else}}chip-teal{{end}}">{{.Kind}}</span>
+          </td>
+          <td class="px-3 py-1.5">
+            <span class="chip font-mono {{if hasPrefix .Source "plugin:"}}chip-purple{{else if hasPrefix .Source "repo:"}}chip-green{{else}}chip-blue{{end}}" title="{{.Source}}">{{sourceLabel .Source}}</span>
+          </td>
+          <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400 font-mono text-xs whitespace-nowrap">{{.Modified}}</td>
+          <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400 max-w-md truncate" title="{{.Description}}">{{.Description}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>

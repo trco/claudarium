@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}} · Claudarium</title>
+    <script>
+      // Apply persisted theme before paint to avoid a flash.
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="/static/js/vendor/htmx-1.9.10.min.js"></script>
+    <script src="/static/js/table.js"></script>
+    <script defer src="/static/js/vendor/alpine-3.15.8.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+    <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div class="max-w-5xl mx-auto px-4 flex items-center gap-1 h-14">
+            <span class="font-semibold text-gray-900 dark:text-gray-100 mr-4">Claudarium</span>
+            {{$nav := .Nav}}
+            {{$c := .Counts}}
+            {{$link := "px-3 py-1.5 rounded text-sm"}}
+            {{$active := "text-blue-700 dark:text-blue-300 font-semibold"}}
+            {{$idle := "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"}}
+            {{$badge := "ml-0.5 align-super text-[10px] leading-none px-1 py-0.5 rounded-full bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200"}}
+            <a href="/memory" class="{{$link}} {{if eq $nav "memory"}}{{$active}}{{else}}{{$idle}}{{end}}">Memory</a>
+            <a href="/capabilities" class="{{$link}} {{if eq $nav "capabilities"}}{{$active}}{{else}}{{$idle}}{{end}}">Capabilities<sup class="{{$badge}}">{{$c.Capabilities}}</sup></a>
+            <a href="/plugins" class="{{$link}} {{if eq $nav "plugins"}}{{$active}}{{else}}{{$idle}}{{end}}">Plugins<sup class="{{$badge}}">{{$c.Plugins}}</sup></a>
+            <a href="/marketplaces" class="{{$link}} {{if eq $nav "marketplaces"}}{{$active}}{{else}}{{$idle}}{{end}}">Marketplaces<sup class="{{$badge}}">{{$c.Marketplaces}}</sup></a>
+            <a href="/mcp" class="{{$link}} {{if eq $nav "mcp"}}{{$active}}{{else}}{{$idle}}{{end}}">MCPs<sup class="{{$badge}}">{{$c.MCP}}</sup></a>
+            <a href="/health" class="{{$link}} {{if eq $nav "health"}}{{$active}}{{else}}{{$idle}}{{end}}">Doctor<sup class="{{$badge}}">{{$c.Health}}</sup></a>
+            <button type="button" onclick="const d=document.documentElement.classList.toggle('dark'); localStorage.theme=d?'dark':'light'"
+                    class="ml-auto text-lg text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100" title="Toggle dark mode">◑</button>
+        </div>
+    </header>
+
+    {{if .OK}}
+    <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false,3000)"
+         class="max-w-5xl mx-auto px-4 mt-4">
+        <div class="rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-2 text-sm">Saved. A timestamped .bak backup was written next to the file.</div>
+    </div>
+    {{end}}
+
+    <main class="max-w-5xl mx-auto px-4 py-6">
+        {{embed}}
+    </main>
+
+    <div id="to-top" class="hidden max-w-5xl mx-auto px-4 pb-8 text-center">
+      <button type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+              class="text-sm text-blue-600 dark:text-blue-400 hover:underline">↑ Back to top</button>
+    </div>
+    <script>
+      (function () {
+        var wrap = document.getElementById('to-top');
+        if (!wrap) return;
+        var upd = function () {
+          wrap.classList.toggle('hidden', document.documentElement.scrollHeight <= window.innerHeight + 8);
+        };
+        new ResizeObserver(upd).observe(document.body); // updates when filtering changes height
+        window.addEventListener('resize', upd);
+        upd();
+      })();
+    </script>
+
+    <div id="modal"></div>
+
+    <!-- Read-only detail slide-over (shared) -->
+    <div x-data x-show="$store.drawer.open" x-cloak
+         class="fixed inset-0 z-40" style="display:none">
+      <div class="absolute inset-0 bg-black/30" @click="$store.drawer.close()"></div>
+      <div class="absolute right-0 top-0 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-xl overflow-auto"
+           x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="font-semibold text-gray-900 dark:text-gray-100" x-text="$store.drawer.fields.Name || 'Details'"></h2>
+          <button @click="$store.drawer.close()" class="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">&times;</button>
+        </div>
+        <div class="p-4 space-y-3 text-sm">
+          <template x-for="[k,v] in Object.entries($store.drawer.fields)" :key="k">
+            <div x-show="v !== '' && v !== null && !Array.isArray(v) || (Array.isArray(v) && v.length)">
+              <div class="text-xs uppercase tracking-wide text-gray-400" x-text="k"></div>
+              <div class="text-gray-700 dark:text-gray-200 break-words whitespace-pre-wrap font-mono text-xs" x-text="Array.isArray(v) ? v.join(', ') : v"></div>
+            </div>
+          </template>
+          <button x-show="$store.drawer.fields.Path" @click="$store.drawer.reveal($store.drawer.fields.Path)"
+                  class="mt-2 px-3 py-1.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700">Reveal in Finder</button>
+        </div>
+      </div>
+    </div>
+</body>
+</html>

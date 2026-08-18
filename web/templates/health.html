@@ -1,0 +1,54 @@
+{{$fi := "w-full min-w-[7rem] rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-blue-200"}}
+{{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Doctor</h1>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">read-only</span>
+  <p>Automated checks — duplicate permission rules, missing paths, plugins enabled but not installed, MCP commands off <span class="code">PATH</span>, and stale repo references.</p>
+</div>
+
+{{if not .Issues}}
+<div class="rounded border border-green-200 bg-green-50 dark:bg-green-900/30 dark:border-green-800 text-green-800 dark:text-green-300 px-4 py-3 text-sm">No issues found ✓</div>
+{{else}}
+<div x-data="tableFilter(['level','area','message'])">
+  <div class="flex items-center gap-4 mb-2 text-sm text-gray-500 dark:text-gray-400">
+    <span x-text="visible + ' of ' + total + ' shown'"></span>
+    <label class="inline-flex items-center gap-1">Group by
+      <select x-model="groupKey" @change="collapsed={}; refresh()" class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-1.5 py-0.5 text-xs">
+        <option value="">None</option><option value="area">Area</option><option value="level">Level</option>
+      </select>
+    </label>
+    <button @click="clear()" class="ml-auto text-xs hover:text-gray-800 dark:hover:text-gray-100 underline">Clear filters</button>
+  </div>
+  <div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+        <tr>
+          <th class="{{$th}}" @click="sortBy('level')">Level <span x-show="sortKey==='level'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('area')">Area <span x-show="sortKey==='area'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="px-3 pt-2 font-medium">Message</th>
+        </tr>
+        <tr>
+          <th class="px-2 pb-2">
+            <select x-model="filters.level" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="error">error</option><option value="info">info</option><option value="warn">warn</option></select>
+          </th>
+          <th class="px-2 pb-2">
+            <select x-model="filters.area" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="mcp">mcp</option><option value="permissions">permissions</option><option value="plugins">plugins</option></select>
+          </th>
+          <th class="px-2 pb-2"><input x-model="filters.message" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {{range .Issues}}
+        <tr data-row data-level="{{.Level}}" data-area="{{.Area}}" data-message="{{lower .Message}}">
+          <td class="px-3 py-1.5">
+            <span class="chip {{if eq .Level "error"}}chip-red{{else if eq .Level "warn"}}chip-amber{{else}}chip-gray{{end}}">{{.Level}}</span>
+          </td>
+          <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{.Area}}</td>
+          <td class="px-3 py-1.5 text-gray-700 dark:text-gray-200">{{.Message}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] { display: none !important; }
+
+@layer components {
+  .chip { @apply px-1.5 py-0.5 rounded text-xs whitespace-nowrap; }
+  .chip-blue   { @apply bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300; }
+  .chip-green  { @apply bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300; }
+  .chip-purple { @apply bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300; }
+  .chip-amber  { @apply bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300; }
+  .chip-indigo { @apply bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300; }
+  .chip-teal   { @apply bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300; }
+  .chip-slate  { @apply bg-slate-100 text-slate-600 dark:bg-slate-500/20 dark:text-slate-300; }
+  .chip-orange { @apply bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300; }
+  .chip-red    { @apply bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300; }
+  .chip-gray   { @apply bg-gray-100 text-gray-600 dark:bg-gray-600/50 dark:text-gray-300; }
+
+  .code { @apply font-mono text-[0.85em] bg-gray-100 dark:bg-gray-700/60 rounded px-1 py-0.5; }
+  .lede { @apply flex items-start flex-wrap gap-x-2 gap-y-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400 mb-5; }
+}
+
+/* Diff preview colouring */
+.diff-add { background: #dcfce7; color: #166534; }
+.diff-del { background: #fee2e2; color: #991b1b; }
+.dark .diff-add { background: #14532d55; color: #86efac; }
+.dark .diff-del { background: #7f1d1d55; color: #fca5a5; }

@@ -1,0 +1,5 @@
+/tmp/
+/dist/
+/claudarium
+build-errors.log
+.DS_Store

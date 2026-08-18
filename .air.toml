@@ -1,0 +1,21 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  bin = "./tmp/main"
+  args_bin = ["--dev"]
+  cmd = "make css && make bin"
+  delay = 1000
+  exclude_dir = ["tmp", "vendor", "web/static"]
+  exclude_regex = ["_test.go"]
+  include_ext = ["go", "html", "tmpl"]
+  log = "build-errors.log"
+
+[color]
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[misc]
+  clean_on_exit = false
