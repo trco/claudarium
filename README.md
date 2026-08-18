@@ -10,7 +10,9 @@ localhost — no auth, no database — reading and writing the real files in
 go run github.com/trco/claudarium/cmd/app@latest --open
 ```
 
-Opens http://localhost:8787. Requires Go ≥ 1.23 on recent macOS.
+Opens http://localhost:8787. Needs Go installed; the module pins Go 1.23,
+which the toolchain fetches automatically if your local Go is older (older
+versions crash with `missing LC_UUID` on recent macOS).
 
 ## Features
 
@@ -25,9 +27,6 @@ Opens http://localhost:8787. Requires Go ≥ 1.23 on recent macOS.
 
 Capabilities and MCP also pick up sibling repos with a `.claude` dir — even
 ones you've never opened in Claude. Add more roots with `--scan ~/a,~/b`.
-
-Every table has per-column filters, click-to-sort columns and a live count;
-Capabilities can group by source. There's a dark-mode toggle in the header.
 
 ## Flags
 
