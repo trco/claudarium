@@ -29,33 +29,17 @@ Capabilities can group by source. Dark-mode toggle in the header.
 `settings.json` is read-only — used only for the Plugins view's
 enabled/disabled state.
 
-## Install & run
+## Run
 
 ```sh
-go run github.com/trco/claudarium/cmd/app@latest --open   # run without installing
-go install github.com/trco/claudarium/cmd/app@latest      # install onto PATH
-brew install trco/tap/claudarium                          # via Homebrew
+go run github.com/trco/claudarium/cmd/app@latest --open
 ```
 
 Serves on http://localhost:8787 and edits the real files in `~/.claude`.
-
 Flags: `--addr` listen address · `--open` launch browser · `--scan a,b` extra
-dirs to scan for repos · `--dev` read assets from disk.
+dirs to scan for repos.
 
-From a checkout: `make run` (build + run), `make dev` (live-reload),
-`make test`, `make build` (binary → `./claudarium`).
-
-> Needs **Go ≥ 1.23** for `go run`/`go install` on recent macOS. On Go 1.22.x
-> use Homebrew or `make` (the Makefile applies the needed link/codesign fixups).
-
-## Releasing
-
-A tag push publishes cross-platform binaries and a Homebrew formula via
-GoReleaser + GitHub Actions:
-
-```sh
-git tag v0.1.0 && git push origin v0.1.0
-```
+> Needs **Go ≥ 1.23** on recent macOS.
 
 ## Not yet
 
