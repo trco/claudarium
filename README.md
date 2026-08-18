@@ -1,6 +1,6 @@
 # Claudarium
 
-A tiny local web UI to view and edit your Claude Code config. Runs on
+A tiny local web UI to view and edit your Claude Code setup. Runs on
 localhost — no auth, no database — reading and writing the real files in
 `~/.claude`.
 
