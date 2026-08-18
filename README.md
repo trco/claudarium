@@ -7,21 +7,24 @@ localhost — no auth, no database — reading and writing the real files in
 ## What it does
 
 **Edit**
-- **Memory** (`~/.claude/CLAUDE.md`) — editor with live markdown preview, a
-  diff before saving, and a timestamped backup written first (a failed backup
-  aborts the write).
+- **Memory** — your global `~/.claude/CLAUDE.md`, with live markdown preview.
+  Every save shows a diff and writes a timestamped `.bak` backup first (a
+  failed backup aborts the write).
 
 **Inspect (read-only)**
-- **Capabilities** — every agent, skill and command across global config,
-  plugins and repos. Repos come from `~/.claude.json` plus any sibling repo
-  with a `.claude` dir found by scanning their parent dirs, so repos you've
-  never opened in Claude still show. Add scan roots with `--scan ~/a,~/b`.
-  Click a row for details + Reveal in Finder.
-- **Plugins** — installed plugins and known marketplaces.
-- **MCP** — configured servers (global + per-repo). Env values are hidden;
-  only variable names show. Missing repos are flagged `stale`.
-- **Health** — duplicate permission rules, missing paths, plugins
-  enabled-but-not-installed, MCP commands not on `PATH`, stale repo references.
+- **Capabilities** — every agent, skill and command Claude can use, across
+  global config, plugins and repos. Repos come from `~/.claude.json` plus any
+  sibling repo with a `.claude` dir found by scanning their parent dirs, so
+  repos you've never opened in Claude still show. Add scan roots with
+  `--scan ~/a,~/b`. Click a row for details + Reveal in Finder.
+- **Plugins** — plugins installed from your marketplaces.
+- **Marketplaces** — the plugin marketplaces Claude knows about, and where
+  each is sourced from.
+- **MCP** — configured MCP servers, global and per-repo. Env values are
+  hidden; only variable names show. Missing repos are flagged `stale`.
+- **Doctor** — automated checks: duplicate permission rules, missing paths,
+  plugins enabled but not installed, MCP commands off `PATH`, and stale repo
+  references.
 
 Every table has per-column filters, click-to-sort columns and a live count;
 Capabilities can group by source. Dark-mode toggle in the header.
