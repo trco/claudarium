@@ -36,24 +36,6 @@ ones you've never opened in Claude. Add more roots with `--scan ~/a,~/b`.
 | `--open` | off | Open the app in your browser on start. |
 | `--scan a,b` | — | Extra dirs to scan one level deep for repos with a `.claude` dir. |
 
-## Development
-
-Clone and run with live-reload (rebuilds CSS + binary on save):
-
-```sh
-git clone https://github.com/trco/claudarium
-cd claudarium
-make dev
-```
-
-Needs [`air`](https://github.com/air-verse/air) and the standalone
-[`tailwindcss`](https://tailwindcss.com/blog/standalone-cli) binary on your
-`PATH`. `make dev` serves with `--dev` (assets read from disk). The Makefile
-applies the macOS link/codesign fixups, so a local Go 1.22 works here too.
-
-Other targets: `make run` (build + open), `make build` (binary → `./claudarium`),
-`make test`.
-
 ## Notes
 
 It writes to your real config. Only Memory is editable, and it always backs up
