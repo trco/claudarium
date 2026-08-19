@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -38,12 +39,15 @@ func olderThan(iso string, days int) bool {
 // ---- Capabilities (agents / skills / commands) ----
 
 type Capability struct {
-	Name        string
-	Kind        string // agent | skill | command
-	Description string
-	Source      string // global | plugin:<name> | repo:<path>
-	Path        string // absolute file path (SKILL.md / *.md)
-	Modified    string // file mtime (YYYY-MM-DD)
+	Name         string
+	Kind         string // agent | skill | command
+	Description  string
+	Model        string // frontmatter: model (if pinned)
+	Tools        string // frontmatter: tools / allowed-tools
+	ArgumentHint string // frontmatter: argument-hint (commands)
+	Source       string // global | plugin:<name> | repo:<path>
+	Path         string // absolute file path (SKILL.md / *.md)
+	Modified     string // file mtime (YYYY-MM-DD)
 }
 
 // ExtraRoots are additional directories to scan one level deep for repos with
@@ -96,10 +100,13 @@ func scanRoot(root, source string) []Capability {
 		if _, err := os.Stat(skillMd); err != nil {
 			continue
 		}
+		fm := frontmatterMap(skillMd)
 		out = append(out, Capability{
 			Name:        e.Name(),
 			Kind:        "skill",
-			Description: frontmatterField(skillMd, "description"),
+			Description: fm["description"],
+			Model:       fm["model"],
+			Tools:       firstNonEmpty(fm["tools"], fm["allowed-tools"]),
 			Source:      source,
 			Path:        skillMd,
 			Modified:    fileDate(skillMd),
@@ -116,38 +123,53 @@ func scanMdDir(dir, kind, source string) []Capability {
 			continue
 		}
 		path := filepath.Join(dir, e.Name())
+		fm := frontmatterMap(path)
 		out = append(out, Capability{
-			Name:        strings.TrimSuffix(e.Name(), ".md"),
-			Kind:        kind,
-			Description: frontmatterField(path, "description"),
-			Source:      source,
-			Path:        path,
-			Modified:    fileDate(path),
+			Name:         strings.TrimSuffix(e.Name(), ".md"),
+			Kind:         kind,
+			Description:  fm["description"],
+			Model:        fm["model"],
+			Tools:        firstNonEmpty(fm["tools"], fm["allowed-tools"]),
+			ArgumentHint: fm["argument-hint"],
+			Source:       source,
+			Path:         path,
+			Modified:     fileDate(path),
 		})
 	}
 	return out
 }
 
-// frontmatterField returns a single-line YAML frontmatter value (best-effort).
-func frontmatterField(path, field string) string {
+// frontmatterMap parses a file's top-level YAML frontmatter into a flat map
+// (best-effort). Nested/indented keys are skipped — we only surface scalars.
+func frontmatterMap(path string) map[string]string {
+	m := map[string]string{}
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return ""
+		return m
 	}
 	lines := strings.Split(string(b), "\n")
 	if len(lines) == 0 || strings.TrimSpace(lines[0]) != "---" {
-		return ""
+		return m
 	}
-	prefix := field + ":"
 	for _, l := range lines[1:] {
 		if strings.TrimSpace(l) == "---" {
 			break
 		}
-		if strings.HasPrefix(l, prefix) {
-			return strings.TrimSpace(strings.TrimPrefix(l, prefix))
+		if l == "" || l[0] == ' ' || l[0] == '\t' {
+			continue // blank or nested (indented) line
+		}
+		if k, v, ok := strings.Cut(l, ":"); ok {
+			m[strings.TrimSpace(k)] = strings.TrimSpace(v)
 		}
 	}
-	return ""
+	return m
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // ---- Plugins & marketplaces ----
@@ -164,6 +186,11 @@ type Plugin struct {
 	Installed    string // installedAt date (YYYY-MM-DD)
 	Updated      string // lastUpdated date (YYYY-MM-DD)
 	UpdatedStale bool   // lastUpdated more than 3 days ago
+	Description  string // from the plugin's manifest
+	Author       string
+	Homepage     string
+	License      string
+	Components   string // e.g. "3 agents · 2 skills" (what it contributes)
 }
 
 type Marketplace struct {
@@ -173,6 +200,9 @@ type Marketplace struct {
 	AutoUpdate   bool
 	Updated      string // lastUpdated date (YYYY-MM-DD)
 	UpdatedStale bool   // lastUpdated more than 3 days ago
+	Owner        string // manifest owner (best-effort)
+	Description  string // manifest description (best-effort)
+	Installed    int    // plugins you've installed from this marketplace
 }
 
 func Plugins() []Plugin {
@@ -188,6 +218,8 @@ func Plugins() []Plugin {
 		gjson.GetBytes(b, "plugins").ForEach(func(name, installs gjson.Result) bool {
 			base, market := splitPluginID(name.String())
 			installs.ForEach(func(_, inst gjson.Result) bool {
+				installPath := inst.Get("installPath").String()
+				mani := pluginManifest(installPath)
 				out = append(out, Plugin{
 					Name:        name.String(),
 					Base:        base,
@@ -196,10 +228,15 @@ func Plugins() []Plugin {
 					Scope:       inst.Get("scope").String(),
 					ProjectPath: inst.Get("projectPath").String(),
 					Enabled:     enabled[name.String()],
-					InstallPath: inst.Get("installPath").String(),
+					InstallPath: installPath,
 					Installed:    shortDate(inst.Get("installedAt").String()),
 					Updated:      shortDate(inst.Get("lastUpdated").String()),
 					UpdatedStale: olderThan(inst.Get("lastUpdated").String(), 3),
+					Description:  mani.Get("description").String(),
+					Author:       manifestAuthor(mani),
+					Homepage:     firstNonEmpty(mani.Get("homepage").String(), mani.Get("repository").String()),
+					License:      mani.Get("license").String(),
+					Components:   countComponents(installPath),
 				})
 				return true
 			})
@@ -218,12 +255,69 @@ func splitPluginID(id string) (base, marketplace string) {
 	return id, ""
 }
 
+// pluginManifest reads a plugin's manifest (.claude-plugin/plugin.json, or a
+// bare plugin.json) from its install dir. Returns a zero Result if absent.
+func pluginManifest(installPath string) gjson.Result {
+	if installPath == "" {
+		return gjson.Result{}
+	}
+	for _, rel := range []string{".claude-plugin/plugin.json", "plugin.json"} {
+		if b, err := os.ReadFile(filepath.Join(installPath, rel)); err == nil {
+			return gjson.ParseBytes(b)
+		}
+	}
+	return gjson.Result{}
+}
+
+// manifestAuthor reads an author that may be a string or an {name,...} object.
+func manifestAuthor(m gjson.Result) string {
+	if a := m.Get("author"); a.IsObject() {
+		return a.Get("name").String()
+	} else {
+		return a.String()
+	}
+}
+
+// countComponents summarises what a plugin/repo contributes, e.g.
+// "3 agents · 2 skills · 1 command". Empty if it ships none.
+func countComponents(root string) string {
+	if root == "" {
+		return ""
+	}
+	var parts []string
+	for _, c := range []struct{ dir, label string }{{"agents", "agent"}, {"commands", "command"}, {"skills", "skill"}} {
+		n := 0
+		entries, _ := os.ReadDir(filepath.Join(root, c.dir))
+		for _, e := range entries {
+			if c.dir == "skills" {
+				if e.IsDir() {
+					n++
+				}
+			} else if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				n++
+			}
+		}
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, plural(c.label, n)))
+		}
+	}
+	return strings.Join(parts, " · ")
+}
+
+func plural(word string, n int) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
+}
+
 func Marketplaces() []Marketplace {
 	var out []Marketplace
 	b, err := os.ReadFile(KnownMarketplacesPath())
 	if err != nil {
 		return out
 	}
+	installed := installedPerMarketplace()
 	gjson.ParseBytes(b).ForEach(func(name, m gjson.Result) bool {
 		src := m.Get("source")
 		loc := src.Get("repo").String()
@@ -237,11 +331,31 @@ func Marketplaces() []Marketplace {
 			AutoUpdate:   m.Get("autoUpdate").Bool(),
 			Updated:      shortDate(m.Get("lastUpdated").String()),
 			UpdatedStale: olderThan(m.Get("lastUpdated").String(), 3),
+			Owner:        firstNonEmpty(m.Get("owner.name").String(), m.Get("owner").String()),
+			Description:  firstNonEmpty(m.Get("metadata.description").String(), m.Get("description").String()),
+			Installed:    installed[name.String()],
 		})
 		return true
 	})
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
+}
+
+// installedPerMarketplace counts installed plugins grouped by their marketplace
+// (the "@market" half of each plugin id).
+func installedPerMarketplace() map[string]int {
+	counts := map[string]int{}
+	b, err := os.ReadFile(InstalledPluginsPath())
+	if err != nil {
+		return counts
+	}
+	gjson.GetBytes(b, "plugins").ForEach(func(name, _ gjson.Result) bool {
+		if _, market := splitPluginID(name.String()); market != "" {
+			counts[market]++
+		}
+		return true
+	})
+	return counts
 }
 
 // ---- MCP servers ----

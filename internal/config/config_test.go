@@ -179,6 +179,33 @@ func TestHealthChecks(t *testing.T) {
 	}
 }
 
+func TestHealthChecks_ExtraChecks(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+
+	proj := filepath.Join(home, "proj")
+	writeFile(t, filepath.Join(home, ".claude/settings.json"),
+		`{"enabledPlugins":{"foo@ghostmkt":true},"statusLine":{"command":"definitely-not-real-binary-xyz-999"}}`)
+	writeFile(t, filepath.Join(home, ".claude/agents/dup.md"), "---\ndescription: g\n---\n")
+	writeFile(t, filepath.Join(proj, ".claude/agents/dup.md"), "---\ndescription: r\n---\n")
+	writeFile(t, filepath.Join(home, ".claude.json"),
+		`{"mcpServers":{"srv":{"command":"echo"}},"projects":{"`+proj+`":{"mcpServers":{"srv":{"command":"echo"}}}}}`)
+
+	issues := HealthChecks()
+	for _, w := range []struct{ level, sub string }{
+		{"warn", "unknown marketplace: ghostmkt"},
+		{"warn", "statusLine command not found"},
+		{"info", "agent dup defined in multiple sources"},
+		{"info", "srv defined in multiple scopes"},
+	} {
+		if !hasIssue(issues, w.level, w.sub) {
+			t.Errorf("missing %s issue containing %q; got %+v", w.level, w.sub, issues)
+		}
+	}
+}
+
 func hasIssue(issues []Issue, level, sub string) bool {
 	for _, i := range issues {
 		if i.Level == level && strings.Contains(i.Message, sub) {

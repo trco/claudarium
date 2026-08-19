@@ -3,7 +3,9 @@
 <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Marketplaces</h1>
 <div class="lede">
   <span class="chip chip-gray shrink-0">read-only</span>
-  <p>Plugin marketplaces Claude knows about, and where each one is sourced from.</p>
+  <p>Plugin marketplaces Claude knows about, and where each one is sourced from.
+    <span class="text-gray-400 dark:text-gray-500">Click a row for full details.</span>
+  </p>
 </div>
 
 <div x-data="tableFilter(['name','source','location','auto','updated'])">
@@ -23,6 +25,7 @@
           <th class="{{$th}}" @click="sortBy('name')">Name <span x-show="sortKey==='name'" x-text="sortDir===1?'▲':'▼'"></span></th>
           <th class="{{$th}}" @click="sortBy('source')">Source <span x-show="sortKey==='source'" x-text="sortDir===1?'▲':'▼'"></span></th>
           <th class="{{$th}}" @click="sortBy('location')">Location <span x-show="sortKey==='location'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('installed')">Plugins <span x-show="sortKey==='installed'" x-text="sortDir===1?'▲':'▼'"></span></th>
           <th class="{{$th}}" @click="sortBy('auto')">Auto-update <span x-show="sortKey==='auto'" x-text="sortDir===1?'▲':'▼'"></span></th>
           <th class="{{$th}}" @click="sortBy('updated')">Updated <span x-show="sortKey==='updated'" x-text="sortDir===1?'▲':'▼'"></span></th>
         </tr>
@@ -32,6 +35,7 @@
             <select x-model="filters.source" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="git">git</option><option value="github">github</option></select>
           </th>
           <th class="px-2 pb-2"><input x-model="filters.location" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2"></th>
           <th class="px-2 pb-2">
             <select x-model="filters.auto" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="no">no</option><option value="yes">yes</option></select>
           </th>
@@ -40,12 +44,15 @@
       </thead>
       <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
         {{range .Marketplaces}}
-        <tr data-row data-name="{{lower .Name}}" data-source="{{lower .SourceType}}" data-location="{{lower .Location}}" data-auto="{{if .AutoUpdate}}yes{{else}}no{{end}}" data-updated="{{.Updated}}">
+        <tr data-row data-name="{{lower .Name}}" data-source="{{lower .SourceType}}" data-location="{{lower .Location}}" data-installed="{{.Installed}}" data-auto="{{if .AutoUpdate}}yes{{else}}no{{end}}" data-updated="{{.Updated}}"
+            data-detail='{{json .}}' @click="$store.drawer.show(JSON.parse($el.dataset.detail))"
+            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <td class="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{{.Name}}</td>
           <td class="px-3 py-1.5">
             <span class="chip {{if eq .SourceType "github"}}chip-slate{{else}}chip-orange{{end}}">{{.SourceType}}</span>
           </td>
           <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.Location}}</td>
+          <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{.Installed}}</td>
           <td class="px-3 py-1.5">{{if .AutoUpdate}}<span class="chip chip-green">yes</span>{{else}}<span class="chip chip-gray">no</span>{{end}}</td>
           <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap {{if .UpdatedStale}}text-red-600 dark:text-red-400 font-medium{{else}}text-gray-500 dark:text-gray-400{{end}}" {{if .UpdatedStale}}title="updated more than 3 days ago"{{end}}>{{.Updated}}</td>
         </tr>

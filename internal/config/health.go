@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -12,7 +14,7 @@ import (
 // Issue is a single config-health finding.
 type Issue struct {
 	Level   string // error | warn | info
-	Area    string // permissions | plugins | mcp
+	Area    string // permissions | plugins | mcp | capabilities | settings
 	Message string
 }
 
@@ -65,8 +67,21 @@ func HealthChecks() []Issue {
 		}
 	}
 
+	// Plugins: enabled plugin whose marketplace isn't a known marketplace.
+	known := map[string]bool{}
+	for _, m := range Marketplaces() {
+		known[m.Name] = true
+	}
+	for name := range enabled {
+		if _, market := splitPluginID(name); market != "" && !known[market] {
+			issues = append(issues, Issue{"warn", "plugins", "enabled plugin " + name + " from unknown marketplace: " + market})
+		}
+	}
+
 	// MCP: stale repo references and stdio commands not found on PATH.
+	mcpScopes := map[string][]string{}
 	for _, s := range MCPServers() {
+		mcpScopes[s.Name] = append(mcpScopes[s.Name], s.Scope)
 		if s.Stale {
 			issues = append(issues, Issue{"warn", "mcp", s.Name + " references a missing repo: " + strings.TrimPrefix(s.Scope, "repo:")})
 		}
@@ -78,8 +93,49 @@ func HealthChecks() []Issue {
 			}
 		}
 	}
+	// MCP: same server name defined in more than one scope.
+	for name, scopes := range mcpScopes {
+		if len(scopes) > 1 {
+			issues = append(issues, Issue{"info", "mcp", name + " defined in multiple scopes: " + strings.Join(scopes, ", ")})
+		}
+	}
+
+	// Capabilities: same name+kind provided by more than one source (shadowing).
+	capSources := map[string]map[string]bool{}
+	for _, c := range Capabilities() {
+		key := c.Kind + " " + c.Name
+		if capSources[key] == nil {
+			capSources[key] = map[string]bool{}
+		}
+		capSources[key][c.Source] = true
+	}
+	for key, srcs := range capSources {
+		if len(srcs) > 1 {
+			issues = append(issues, Issue{"info", "capabilities", key + " defined in multiple sources: " + strings.Join(sortedKeys(srcs), ", ")})
+		}
+	}
+
+	// Settings: malformed JSON, and a statusLine command not on PATH.
+	if len(settings) > 0 && !json.Valid(settings) {
+		issues = append(issues, Issue{"error", "settings", "settings.json is not valid JSON"})
+	}
+	if cmd := gjson.GetBytes(settings, "statusLine.command").String(); cmd != "" {
+		if fields := strings.Fields(cmd); len(fields) > 0 && !commandExists(fields[0]) {
+			issues = append(issues, Issue{"warn", "settings", "statusLine command not found on PATH: " + fields[0]})
+		}
+	}
 
 	return issues
+}
+
+// sortedKeys returns a map's keys sorted, for stable messages.
+func sortedKeys(m map[string]bool) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // commandExists reports whether cmd resolves on PATH or is an existing file.

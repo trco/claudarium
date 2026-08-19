@@ -3,7 +3,7 @@
 <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Doctor</h1>
 <div class="lede">
   <span class="chip chip-gray shrink-0">read-only</span>
-  <p>Automated checks — duplicate permission rules, missing paths, plugins enabled but not installed, MCP commands off <span class="code">PATH</span>, and stale repo references.</p>
+  <p>Automated checks — duplicate permission rules, missing paths, plugins enabled but not installed or from an unknown marketplace, shadowed capabilities, MCP commands off <span class="code">PATH</span>, duplicate MCP names, stale repo references, and malformed settings.</p>
 </div>
 
 {{if not .Issues}}
@@ -32,7 +32,7 @@
             <select x-model="filters.level" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="error">error</option><option value="info">info</option><option value="warn">warn</option></select>
           </th>
           <th class="px-2 pb-2">
-            <select x-model="filters.area" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="mcp">mcp</option><option value="permissions">permissions</option><option value="plugins">plugins</option></select>
+            <select x-model="filters.area" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="capabilities">capabilities</option><option value="mcp">mcp</option><option value="permissions">permissions</option><option value="plugins">plugins</option><option value="settings">settings</option></select>
           </th>
           <th class="px-2 pb-2"><input x-model="filters.message" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
         </tr>
