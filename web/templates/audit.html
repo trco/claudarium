@@ -1,5 +1,5 @@
 <div class="flex items-center justify-between mb-1">
-  <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Audit log</h1>
+  <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Logs</h1>
   {{if .Entries}}
   <form action="/audit/clear" method="post" x-data>
     <button type="button" @click="$store.confirm.ask('Clear the entire audit log ({{len .Entries}} entries)?\nBacked-up snapshots will be deleted too. This cannot be undone.', () => $el.closest('form').submit())"

@@ -55,6 +55,9 @@ func AppendAudit(kind, summary, backup string) {
 	f.Write(append(b, '\n'))
 }
 
+// AuditCount returns the number of logged entries (cheap — no diffs).
+func AuditCount() int { return len(readAudit()) }
+
 func readAudit() []AuditEntry {
 	b, err := os.ReadFile(AuditLogPath())
 	if err != nil {

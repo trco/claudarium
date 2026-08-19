@@ -114,7 +114,7 @@ func SettingsPage(c *fiber.Ctx) error {
 
 func AuditPage(c *fiber.Ctx) error {
 	return render(c, "audit", fiber.Map{
-		"Nav": "audit", "Title": "Audit log",
+		"Nav": "audit", "Title": "Logs",
 		"Entries": config.AuditEntries(),
 	})
 }

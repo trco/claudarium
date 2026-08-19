@@ -12,6 +12,7 @@ type NavCounts struct {
 	Marketplaces int
 	MCP          int
 	Health       int
+	Logs         int
 }
 
 var (
@@ -36,6 +37,7 @@ func Counts() NavCounts {
 		Marketplaces: len(Marketplaces()),
 		MCP:          len(MCPServers()),
 		Health:       len(HealthChecks()),
+		Logs:         AuditCount(),
 	}
 	countsAt = time.Now()
 	countsValid = true
