@@ -42,6 +42,11 @@ func PluginToggle(c *fiber.Ctx) error {
 	if err := config.SetPluginEnabled(name, enabled); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
+	verb := "Disabled"
+	if enabled {
+		verb = "Enabled"
+	}
+	config.AppendAudit("plugin", verb+" plugin "+name, "")
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -77,6 +82,11 @@ func MCPToggle(c *fiber.Ctx) error {
 	if err := config.SetMCPEnabled(scope, name, enabled); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
+	state := "off"
+	if enabled {
+		state = "on"
+	}
+	config.AppendAudit("mcp", "Turned MCP "+name+" "+state+" ("+scope+")", "")
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -102,25 +112,25 @@ func SettingsPage(c *fiber.Ctx) error {
 	})
 }
 
-func BackupsPage(c *fiber.Ctx) error {
-	return render(c, "backups", fiber.Map{
-		"Nav": "backups", "Title": "Backups",
-		"Backups": config.Backups(),
+func AuditPage(c *fiber.Ctx) error {
+	return render(c, "audit", fiber.Map{
+		"Nav": "audit", "Title": "Audit log",
+		"Entries": config.AuditEntries(),
 	})
 }
 
-// BackupDelete removes a single backup file, then reloads the list.
-func BackupDelete(c *fiber.Ctx) error {
-	if err := config.DeleteBackup(c.FormValue("path")); err != nil {
+// AuditDelete drops one log entry (and its backup, if any), then reloads.
+func AuditDelete(c *fiber.Ctx) error {
+	if err := config.DeleteAuditEntry(c.FormValue("id")); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
-	return c.Redirect("/backups")
+	return c.Redirect("/audit")
 }
 
-// BackupDeleteAll removes every backup, then reloads the list.
-func BackupDeleteAll(c *fiber.Ctx) error {
-	if _, err := config.DeleteAllBackups(); err != nil {
+// AuditClear wipes the whole log and its backups, then reloads.
+func AuditClear(c *fiber.Ctx) error {
+	if _, err := config.ClearAudit(); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
-	return c.Redirect("/backups")
+	return c.Redirect("/audit")
 }

@@ -283,45 +283,50 @@ func TestSetMCPEnabled(t *testing.T) {
 	}
 }
 
-func TestBackupsAndDelete(t *testing.T) {
+func TestAuditLog(t *testing.T) {
 	home := t.TempDir()
 	old := Home
 	Home = func() string { return home }
 	defer func() { Home = old }()
 
-	orig := filepath.Join(home, ".claude", "CLAUDE.md")
-	writeFile(t, orig, "v3\n")             // current live file
-	writeFile(t, orig+".bak.1000", "v1\n") // older snapshot
-	writeFile(t, orig+".bak.2000", "v2\n") // newer snapshot
+	mem := filepath.Join(home, ".claude", "CLAUDE.md")
+	writeFile(t, mem, "v2\n")             // current memory
+	writeFile(t, mem+".bak.1000", "v1\n") // snapshot before the edit
 
-	bs := Backups()
-	if len(bs) != 2 {
-		t.Fatalf("want 2 backups, got %d: %+v", len(bs), bs)
+	AppendAudit("plugin", "Enabled plugin foo@mkt", "")
+	AppendAudit("memory", "Edited CLAUDE.md", mem+".bak.1000")
+	AppendAudit("mcp", "Turned MCP srv on (global)", "")
+
+	es := AuditEntries()
+	if len(es) != 3 {
+		t.Fatalf("want 3 entries, got %d: %+v", len(es), es)
 	}
-	if bs[0].Unix != 2000 || bs[1].Unix != 1000 {
-		t.Errorf("want newest-first, got %d then %d", bs[0].Unix, bs[1].Unix)
+	if es[0].Kind != "mcp" || es[2].Kind != "plugin" {
+		t.Errorf("want newest-first (mcp .. plugin), got %s .. %s", es[0].Kind, es[2].Kind)
 	}
-	if bs[0].Adds == 0 && bs[0].Dels == 0 {
-		t.Errorf("newest snapshot should diff v2->current(v3): %+v", bs[0].Diff)
-	}
-	if bs[1].Adds == 0 && bs[1].Dels == 0 {
-		t.Errorf("older snapshot should diff v1->v2: %+v", bs[1].Diff)
+	// the memory entry carries a diff (v1 -> current v2)
+	memEntry := es[1]
+	if memEntry.Kind != "memory" || (memEntry.Adds == 0 && memEntry.Dels == 0) {
+		t.Errorf("memory entry should have a diff: %+v", memEntry)
 	}
 
-	if err := DeleteBackup(orig); err == nil {
-		t.Error("DeleteBackup should refuse a non-.bak file")
-	}
-	if err := DeleteBackup(bs[0].Path); err != nil {
+	// delete the memory entry -> its backup is removed too
+	if err := DeleteAuditEntry(memEntry.ID); err != nil {
 		t.Fatal(err)
 	}
-	if len(Backups()) != 1 {
-		t.Error("expected 1 backup after deleting one")
+	if _, err := os.Stat(mem + ".bak.1000"); !os.IsNotExist(err) {
+		t.Error("deleting the memory entry should remove its .bak file")
 	}
-	if n, _ := DeleteAllBackups(); n != 1 {
-		t.Errorf("delete-all removed %d, want 1", n)
+	if len(AuditEntries()) != 2 {
+		t.Errorf("want 2 entries after delete, got %d", len(AuditEntries()))
 	}
-	if len(Backups()) != 0 {
-		t.Error("expected 0 backups after delete-all")
+
+	// clear everything
+	if _, err := ClearAudit(); err != nil {
+		t.Fatal(err)
+	}
+	if len(AuditEntries()) != 0 {
+		t.Error("audit log should be empty after clear")
 	}
 }
 

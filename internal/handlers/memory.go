@@ -42,9 +42,11 @@ func MemoryPreview(c *fiber.Ctx) error {
 }
 
 func MemoryApply(c *fiber.Ctx) error {
-	if _, err := config.SaveFile(config.MemoryPath(), []byte(c.FormValue("content"))); err != nil {
+	bak, err := config.SaveFile(config.MemoryPath(), []byte(c.FormValue("content")))
+	if err != nil {
 		return applyError(c, err)
 	}
+	config.AppendAudit("memory", "Edited CLAUDE.md", bak)
 	c.Set("HX-Redirect", "/memory?ok=1")
 	return c.SendStatus(fiber.StatusOK)
 }

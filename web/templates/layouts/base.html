@@ -32,7 +32,7 @@
             <a href="/mcp" class="{{$link}} {{if eq $nav "mcp"}}{{$active}}{{else}}{{$idle}}{{end}}">MCPs<sup class="{{$badge}}">{{$c.MCP}}</sup></a>
             <a href="/health" class="{{$link}} {{if eq $nav "health"}}{{$active}}{{else}}{{$idle}}{{end}}">Doctor<sup class="{{$badge}}">{{$c.Health}}</sup></a>
             <a href="/settings" class="{{$link}} {{if eq $nav "settings"}}{{$active}}{{else}}{{$idle}}{{end}}">Settings</a>
-            <a href="/backups" class="{{$link}} {{if eq $nav "backups"}}{{$active}}{{else}}{{$idle}}{{end}}">Backups</a>
+            <a href="/audit" class="{{$link}} {{if eq $nav "audit"}}{{$active}}{{else}}{{$idle}}{{end}}">Audit log</a>
             <form action="/search" method="get" class="ml-auto">
               <input type="search" name="q" {{if .Query}}value="{{.Query}}"{{end}} placeholder="search…"
                      class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs w-40 focus:outline-none focus:ring-1 focus:ring-blue-200">
