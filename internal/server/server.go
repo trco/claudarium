@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -19,6 +21,10 @@ import (
 	"github.com/trco/claudarium/internal/config"
 	"github.com/trco/claudarium/internal/handlers"
 )
+
+// assetVer changes each process start, so ?v= busts any stale browser cache of
+// app.css / table.js after a restart (the app is edited far more than deployed).
+var assetVer = strconv.FormatInt(time.Now().Unix(), 10)
 
 func New(dev bool) *fiber.App {
 	engine := templateEngine(dev)
@@ -49,6 +55,7 @@ func New(dev bool) *fiber.App {
 	app.Use(func(c *fiber.Ctx) error {
 		if !strings.HasPrefix(c.Path(), "/static") {
 			c.Locals("Counts", config.Counts())
+			c.Locals("AssetVer", assetVer)
 		}
 		return c.Next()
 	})
