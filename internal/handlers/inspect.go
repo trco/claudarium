@@ -39,10 +39,10 @@ func PluginsPage(c *fiber.Ctx) error {
 func PluginToggle(c *fiber.Ctx) error {
 	name := c.FormValue("name")
 	enabled := c.FormValue("enabled") == "true"
-	if _, err := config.SetPluginEnabled(name, enabled); err != nil {
+	if err := config.SetPluginEnabled(name, enabled); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
-	return c.Redirect("/plugins?ok=1")
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func sortedKeys(m map[string]bool) []string {
@@ -74,10 +74,10 @@ func MCPToggle(c *fiber.Ctx) error {
 	name := c.FormValue("name")
 	scope := c.FormValue("scope")
 	enabled := c.FormValue("enabled") == "true"
-	if _, err := config.SetMCPEnabled(scope, name, enabled); err != nil {
+	if err := config.SetMCPEnabled(scope, name, enabled); err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
 	}
-	return c.Redirect("/mcp?ok=1")
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 func HealthPage(c *fiber.Ctx) error {
@@ -100,4 +100,27 @@ func SettingsPage(c *fiber.Ctx) error {
 		"Nav": "settings", "Title": "Settings",
 		"Settings": config.Settings(),
 	})
+}
+
+func BackupsPage(c *fiber.Ctx) error {
+	return render(c, "backups", fiber.Map{
+		"Nav": "backups", "Title": "Backups",
+		"Backups": config.Backups(),
+	})
+}
+
+// BackupDelete removes a single backup file, then reloads the list.
+func BackupDelete(c *fiber.Ctx) error {
+	if err := config.DeleteBackup(c.FormValue("path")); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+	return c.Redirect("/backups")
+}
+
+// BackupDeleteAll removes every backup, then reloads the list.
+func BackupDeleteAll(c *fiber.Ctx) error {
+	if _, err := config.DeleteAllBackups(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+	return c.Redirect("/backups")
 }

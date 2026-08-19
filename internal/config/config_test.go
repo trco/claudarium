@@ -217,20 +217,13 @@ func TestSetPluginEnabled(t *testing.T) {
 	sp := filepath.Join(home, ".claude/settings.json")
 	writeFile(t, sp, `{"enabledPlugins":{"foo@mkt":true}}`)
 
-	bak, err := SetPluginEnabled("foo@mkt", false)
-	if err != nil {
+	if err := SetPluginEnabled("foo@mkt", false); err != nil {
 		t.Fatal(err)
-	}
-	if bak == "" {
-		t.Fatal("expected a backup path")
 	}
 	if cur, _ := os.ReadFile(sp); !strings.Contains(string(cur), `"foo@mkt":false`) {
 		t.Errorf("want foo@mkt=false, got %s", cur)
 	}
-	if prev, _ := os.ReadFile(bak); !strings.Contains(string(prev), `"foo@mkt":true`) {
-		t.Errorf("backup should hold the previous value, got %s", prev)
-	}
-	if _, err := SetPluginEnabled("bar@mkt", true); err != nil {
+	if err := SetPluginEnabled("bar@mkt", true); err != nil {
 		t.Fatal(err)
 	}
 	if cur, _ := os.ReadFile(sp); !strings.Contains(string(cur), `"bar@mkt":true`) {
@@ -248,7 +241,7 @@ func TestSetMCPEnabled(t *testing.T) {
 	writeFile(t, cj, `{"mcpServers":{"g":{"command":"echo"}},"projects":{"/repo":{"mcpServers":{"r":{"command":"echo"}}}}}`)
 
 	// Global disable: moved out of mcpServers into the stash, not deleted.
-	if _, err := SetMCPEnabled("global", "g", false); err != nil {
+	if err := SetMCPEnabled("global", "g", false); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(cj)
@@ -262,7 +255,7 @@ func TestSetMCPEnabled(t *testing.T) {
 		t.Errorf("g should still be listed as disabled: %+v", s)
 	}
 	// Global enable: moved back.
-	if _, err := SetMCPEnabled("global", "g", true); err != nil {
+	if err := SetMCPEnabled("global", "g", true); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(cj)
@@ -271,7 +264,7 @@ func TestSetMCPEnabled(t *testing.T) {
 	}
 
 	// Repo disable: added to disabledMcpServers; the definition is preserved.
-	if _, err := SetMCPEnabled("repo:/repo", "r", false); err != nil {
+	if err := SetMCPEnabled("repo:/repo", "r", false); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(cj)
@@ -282,11 +275,53 @@ func TestSetMCPEnabled(t *testing.T) {
 		t.Errorf("r should be disabled: %+v", s)
 	}
 	// Repo enable: removed from the list.
-	if _, err := SetMCPEnabled("repo:/repo", "r", true); err != nil {
+	if err := SetMCPEnabled("repo:/repo", "r", true); err != nil {
 		t.Fatal(err)
 	}
 	if s := findServer(MCPServers(), "r"); s == nil || !s.Enabled {
 		t.Errorf("r should be enabled again: %+v", s)
+	}
+}
+
+func TestBackupsAndDelete(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+
+	orig := filepath.Join(home, ".claude", "CLAUDE.md")
+	writeFile(t, orig, "v3\n")             // current live file
+	writeFile(t, orig+".bak.1000", "v1\n") // older snapshot
+	writeFile(t, orig+".bak.2000", "v2\n") // newer snapshot
+
+	bs := Backups()
+	if len(bs) != 2 {
+		t.Fatalf("want 2 backups, got %d: %+v", len(bs), bs)
+	}
+	if bs[0].Unix != 2000 || bs[1].Unix != 1000 {
+		t.Errorf("want newest-first, got %d then %d", bs[0].Unix, bs[1].Unix)
+	}
+	if bs[0].Adds == 0 && bs[0].Dels == 0 {
+		t.Errorf("newest snapshot should diff v2->current(v3): %+v", bs[0].Diff)
+	}
+	if bs[1].Adds == 0 && bs[1].Dels == 0 {
+		t.Errorf("older snapshot should diff v1->v2: %+v", bs[1].Diff)
+	}
+
+	if err := DeleteBackup(orig); err == nil {
+		t.Error("DeleteBackup should refuse a non-.bak file")
+	}
+	if err := DeleteBackup(bs[0].Path); err != nil {
+		t.Fatal(err)
+	}
+	if len(Backups()) != 1 {
+		t.Error("expected 1 backup after deleting one")
+	}
+	if n, _ := DeleteAllBackups(); n != 1 {
+		t.Errorf("delete-all removed %d, want 1", n)
+	}
+	if len(Backups()) != 0 {
+		t.Error("expected 0 backups after delete-all")
 	}
 }
 

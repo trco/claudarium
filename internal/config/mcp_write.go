@@ -19,14 +19,14 @@ func sjsonEscape(s string) string {
 	return strings.NewReplacer(".", `\.`, "@", `\@`, "*", `\*`, "?", `\?`).Replace(s)
 }
 
-// SetMCPEnabled enables/disables an MCP server, writing ~/.claude.json (backed
-// up first via SaveFile). Reversible and non-destructive: repo servers toggle
-// the native disabledMcpServers list; global servers move between mcpServers
-// and a private stash key.
-func SetMCPEnabled(scope, name string, enabled bool) (string, error) {
+// SetMCPEnabled enables/disables an MCP server, writing ~/.claude.json.
+// Reversible and non-destructive: repo servers toggle the native
+// disabledMcpServers list; global servers move between mcpServers and a
+// private stash key. No backup — nothing is ever deleted.
+func SetMCPEnabled(scope, name string, enabled bool) error {
 	b, err := os.ReadFile(ClaudeJSONPath())
 	if err != nil {
-		return "", err
+		return err
 	}
 	var updated []byte
 	if p, ok := strings.CutPrefix(scope, "repo:"); ok {
@@ -35,9 +35,9 @@ func SetMCPEnabled(scope, name string, enabled bool) (string, error) {
 		updated, err = setGlobalMCPEnabled(b, name, enabled)
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
-	return SaveFile(ClaudeJSONPath(), updated)
+	return WriteFile(ClaudeJSONPath(), updated)
 }
 
 // setRepoMCPEnabled adds/removes name in projects.<path>.disabledMcpServers.

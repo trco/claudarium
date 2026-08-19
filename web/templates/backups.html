@@ -1,0 +1,63 @@
+<div class="flex items-center justify-between mb-1">
+  <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Backups</h1>
+  {{if .Backups}}
+  <form action="/backups/delete-all" method="post"
+        onsubmit="return confirm('Delete ALL {{len .Backups}} backups?\nThis cannot be undone.')">
+    <button type="submit" class="px-3 py-1.5 rounded bg-red-600 text-white text-xs hover:bg-red-700">Delete all</button>
+  </form>
+  {{end}}
+</div>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">audit log</span>
+  <p>Every config backup, newest first. Only Memory edits create backups.
+    <span class="text-gray-400 dark:text-gray-500">Click a row to see the change it captured.</span>
+  </p>
+</div>
+
+{{if not .Backups}}
+<div class="rounded border border-green-200 bg-green-50 dark:bg-green-900/30 dark:border-green-800 text-green-800 dark:text-green-300 px-4 py-3 text-sm">No backups.</div>
+{{else}}
+<div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+      <tr>
+        <th class="px-3 py-2 font-medium">When</th>
+        <th class="px-3 py-2 font-medium">File</th>
+        <th class="px-3 py-2 font-medium">Change</th>
+        <th class="px-3 py-2 font-medium text-right">Actions</th>
+      </tr>
+    </thead>
+    {{range .Backups}}
+    <tbody x-data="{open:false}" class="border-t border-gray-100 dark:border-gray-700">
+      <tr @click="open=!open" class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+        <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+          <span x-text="open ? '▾' : '▸'" class="mr-1 text-gray-400"></span>{{.When}}
+        </td>
+        <td class="px-3 py-1.5 text-gray-800 dark:text-gray-100 whitespace-nowrap" title="{{.Original}}">{{.Name}}</td>
+        <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap">
+          {{if or .Adds .Dels}}<span class="text-green-600 dark:text-green-400">+{{.Adds}}</span> <span class="text-red-600 dark:text-red-400">−{{.Dels}}</span>{{else}}<span class="text-gray-400">no change</span>{{end}}
+        </td>
+        <td class="px-3 py-1.5 text-right" @click.stop>
+          <form action="/backups/delete" method="post" class="inline"
+                onsubmit="return confirm('Delete this backup?\n{{.Name}} — {{.When}}')">
+            <input type="hidden" name="path" value="{{.Path}}">
+            <button type="submit" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-red-600 dark:text-red-400 text-xs hover:bg-red-50 dark:hover:bg-red-900/30">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <tr x-show="open" style="display:none">
+        <td colspan="4" class="px-3 pb-3">
+          {{if .Diff}}
+          <div class="rounded border border-gray-200 dark:border-gray-700 max-h-96 overflow-auto font-mono text-xs leading-relaxed">
+            {{range .Diff}}<div class="px-3 whitespace-pre-wrap {{if eq .Op "+"}}bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300{{else if eq .Op "-"}}bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300{{else}}text-gray-500 dark:text-gray-400{{end}}">{{.Op}} {{.Text}}</div>{{end}}
+          </div>
+          {{else}}
+          <div class="text-xs text-gray-400 px-3">No textual difference.</div>
+          {{end}}
+        </td>
+      </tr>
+    </tbody>
+    {{end}}
+  </table>
+</div>
+{{end}}

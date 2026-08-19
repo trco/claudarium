@@ -98,6 +98,30 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  // Async enable/disable switch. POSTs the toggle and flips in place (no reload);
+  // also updates the row's data-enabled so table filters/sort stay in sync.
+  Alpine.data('toggle', (opts) => ({
+    on: opts.on,
+    busy: false,
+    flip(el) {
+      if (this.busy) return;
+      this.busy = true;
+      fetch(opts.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ ...opts.params, enabled: String(!this.on) }),
+      })
+        .then((r) => (r.ok ? r : r.text().then((t) => Promise.reject(t || r.status))))
+        .then(() => {
+          this.on = !this.on;
+          const tr = el.closest('tr');
+          if (tr) tr.dataset.enabled = this.on ? opts.onData : opts.offData;
+        })
+        .catch((e) => alert('Could not change state: ' + e))
+        .finally(() => (this.busy = false));
+    },
+  }));
+
   // Read-only detail slide-over, shared across pages.
   Alpine.store('drawer', {
     open: false,
