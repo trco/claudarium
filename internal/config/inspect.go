@@ -363,33 +363,46 @@ func installedPerMarketplace() map[string]int {
 // ---- MCP servers ----
 
 type MCPServer struct {
-	Name    string
-	Scope   string // global | repo:<path>
-	Kind    string // stdio | http/sse
-	Target  string // command+args or url
-	EnvKeys []string
-	Enabled bool
-	Stale   bool // repo scope whose directory no longer exists on disk
+	Name       string
+	Scope      string // global | repo:<path> | plugin:<name> | claude.ai
+	Kind       string // stdio | http/sse
+	Target     string // command+args or url
+	EnvKeys    []string
+	Enabled    bool
+	Stale      bool // repo scope whose directory no longer exists on disk
+	Toggleable bool // can be enabled/disabled from the UI (~/.claude.json servers only)
 }
 
+// MCPServers aggregates every MCP server Claude can see: ~/.claude.json (global
+// + per-project), each repo's .mcp.json, plugin-bundled servers, and claude.ai
+// connectors. Only the ~/.claude.json ones are toggleable; the rest are shown
+// read-only.
 func MCPServers() []MCPServer {
 	var out []MCPServer
-	b, err := os.ReadFile(ClaudeJSONPath())
-	if err != nil {
-		return out
+	seen := map[string]bool{} // scope+name, so a server isn't listed twice
+	add := func(s MCPServer) {
+		key := s.Scope + "\x00" + s.Name
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, s)
 	}
-	root := gjson.ParseBytes(b)
+
+	root := gjson.Result{}
+	if b, err := os.ReadFile(ClaudeJSONPath()); err == nil {
+		root = gjson.ParseBytes(b)
+	}
 
 	root.Get("mcpServers").ForEach(func(name, def gjson.Result) bool {
-		out = append(out, mcpFrom(name.String(), def, "global", true, false))
+		add(mcpFrom(name.String(), def, "global", true, false, true))
 		return true
 	})
 	// Global servers we've disabled (stashed) — surfaced so they can be re-enabled.
 	root.Get(globalDisabledMCPKey).ForEach(func(name, def gjson.Result) bool {
-		out = append(out, mcpFrom(name.String(), def, "global", false, false))
+		add(mcpFrom(name.String(), def, "global", false, false, true))
 		return true
 	})
-
 	root.Get("projects").ForEach(func(path, proj gjson.Result) bool {
 		disabled := map[string]bool{}
 		proj.Get("disabledMcpServers").ForEach(func(_, v gjson.Result) bool {
@@ -398,9 +411,58 @@ func MCPServers() []MCPServer {
 		})
 		stale := !dirExists(path.String())
 		proj.Get("mcpServers").ForEach(func(name, def gjson.Result) bool {
-			out = append(out, mcpFrom(name.String(), def, "repo:"+path.String(), !disabled[name.String()], stale))
+			add(mcpFrom(name.String(), def, "repo:"+path.String(), !disabled[name.String()], stale, true))
 			return true
 		})
+		return true
+	})
+
+	// Repo .mcp.json (checked into the repo) — project-scoped, read-only here.
+	for _, repo := range RepoPaths() {
+		for _, s := range mcpFromFile(filepath.Join(repo, ".mcp.json"), "repo:"+repo) {
+			add(s)
+		}
+	}
+
+	// Plugin-bundled servers (<installPath>/.mcp.json).
+	if b, err := os.ReadFile(InstalledPluginsPath()); err == nil {
+		gjson.GetBytes(b, "plugins").ForEach(func(name, installs gjson.Result) bool {
+			base, _ := splitPluginID(name.String())
+			installs.ForEach(func(_, inst gjson.Result) bool {
+				if p := inst.Get("installPath").String(); p != "" {
+					for _, s := range mcpFromFile(filepath.Join(p, ".mcp.json"), "plugin:"+base) {
+						add(s)
+					}
+				}
+				return true
+			})
+			return true
+		})
+	}
+
+	// claude.ai connectors (managed remotely — name only, no command/url stored).
+	root.Get("claudeAiMcpEverConnected").ForEach(func(_, v gjson.Result) bool {
+		add(MCPServer{
+			Name:    strings.TrimPrefix(v.String(), "claude.ai "),
+			Scope:   "claude.ai",
+			Kind:    "http/sse",
+			Enabled: true,
+		})
+		return true
+	})
+
+	return out
+}
+
+// mcpFromFile reads the mcpServers block of an .mcp.json file (read-only entries).
+func mcpFromFile(path, scope string) []MCPServer {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var out []MCPServer
+	gjson.GetBytes(b, "mcpServers").ForEach(func(name, def gjson.Result) bool {
+		out = append(out, mcpFrom(name.String(), def, scope, true, false, false))
 		return true
 	})
 	return out
@@ -411,8 +473,8 @@ func dirExists(p string) bool {
 	return err == nil && fi.IsDir()
 }
 
-func mcpFrom(name string, def gjson.Result, scope string, enabled, stale bool) MCPServer {
-	s := MCPServer{Name: name, Scope: scope, Enabled: enabled, Stale: stale}
+func mcpFrom(name string, def gjson.Result, scope string, enabled, stale, toggleable bool) MCPServer {
+	s := MCPServer{Name: name, Scope: scope, Enabled: enabled, Stale: stale, Toggleable: toggleable}
 	if url := def.Get("url").String(); url != "" {
 		s.Kind = def.Get("type").String()
 		if s.Kind == "" {

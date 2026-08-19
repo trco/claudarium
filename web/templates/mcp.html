@@ -2,7 +2,7 @@
 {{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
 <h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">MCP servers</h1>
 <div class="lede">
-  <p>Configured MCP servers, global and per-repo.
+  <p>Configured MCP servers — global, per-repo, plugin and claude.ai. Only global/repo servers are toggleable.
     <span class="text-gray-400 dark:text-gray-500">Click a row for full details.</span>
   </p>
 </div>
@@ -31,7 +31,7 @@
         <tr>
           <th class="px-2 pb-2"><input x-model="filters.name" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
           <th class="px-2 pb-2">
-            <select x-model="filters.scope" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="global">global</option><option value="repo:">repo</option></select>
+            <select x-model="filters.scope" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="global">global</option><option value="repo:">repo</option><option value="plugin:">plugin</option><option value="claude.ai">claude.ai</option></select>
           </th>
           <th class="px-2 pb-2">
             <select x-model="filters.kind" @change="refresh()" class="{{$fi}}"><option value="">all</option><option value="http">http/sse</option><option value="stdio">stdio</option></select>
@@ -50,7 +50,7 @@
             class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <td class="px-3 py-1.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{{.Name}}{{if .Stale}} <span class="chip chip-red" title="repo directory no longer exists">stale</span>{{end}}</td>
           <td class="px-3 py-1.5">
-            <span class="chip font-mono {{if hasPrefix .Scope "repo:"}}chip-green{{else}}chip-blue{{end}}" title="{{.Scope}}">{{sourceLabel .Scope}}</span>
+            <span class="chip font-mono {{if hasPrefix .Scope "repo:"}}chip-green{{else if hasPrefix .Scope "plugin:"}}chip-purple{{else if eq .Scope "claude.ai"}}chip-slate{{else}}chip-blue{{end}}" title="{{.Scope}}">{{sourceLabel .Scope}}</span>
           </td>
           <td class="px-3 py-1.5">
             <span class="chip {{if eq .Kind "stdio"}}chip-slate{{else}}chip-orange{{end}}">{{.Kind}}</span>
@@ -59,6 +59,7 @@
           <td class="px-3 py-1.5">
             {{range .EnvKeys}}<span class="chip chip-gray font-mono inline-block mr-1 mb-1">{{.}}</span>{{end}}
           </td>
+          {{if .Toggleable}}
           <td class="px-3 py-1.5" @click.stop
               x-data="toggle({ url: '/mcp/toggle', params: { name: '{{.Name}}', scope: '{{.Scope}}' }, on: {{if .Enabled}}true{{else}}false{{end}}, onData: 'enabled on', offData: 'disabled off' })">
             <div class="flex items-center gap-2">
@@ -71,6 +72,11 @@
               </button>
             </div>
           </td>
+          {{else}}
+          <td class="px-3 py-1.5" title="read-only — managed by its source">
+            <span class="chip {{if .Enabled}}chip-green{{else}}chip-gray{{end}}">{{if .Enabled}}on{{else}}off{{end}}</span>
+          </td>
+          {{end}}
         </tr>
         {{end}}
       </tbody>
