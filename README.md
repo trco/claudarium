@@ -7,7 +7,7 @@ localhost — no auth, no database — reading and writing the real files in
 ## Quick start
 
 ```sh
-go run github.com/trco/claudarium/cmd/app@main --open
+go run github.com/trco/claudarium/cmd/app@master --open
 ```
 
 Opens http://localhost:8787. Needs Go installed; the module pins Go 1.23,
