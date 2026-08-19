@@ -384,6 +384,11 @@ func MCPServers() []MCPServer {
 		out = append(out, mcpFrom(name.String(), def, "global", true, false))
 		return true
 	})
+	// Global servers we've disabled (stashed) — surfaced so they can be re-enabled.
+	root.Get(globalDisabledMCPKey).ForEach(func(name, def gjson.Result) bool {
+		out = append(out, mcpFrom(name.String(), def, "global", false, false))
+		return true
+	})
 
 	root.Get("projects").ForEach(func(path, proj gjson.Result) bool {
 		disabled := map[string]bool{}

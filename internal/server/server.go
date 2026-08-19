@@ -65,6 +65,7 @@ func New(dev bool) *fiber.App {
 	app.Post("/plugins/toggle", handlers.PluginToggle)
 	app.Get("/marketplaces", handlers.MarketplacesPage)
 	app.Get("/mcp", handlers.MCPPage)
+	app.Post("/mcp/toggle", handlers.MCPToggle)
 	app.Get("/health", handlers.HealthPage)
 	app.Get("/settings", handlers.SettingsPage)
 	app.Get("/search", handlers.SearchPage)

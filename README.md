@@ -11,22 +11,33 @@ GOPROXY=direct go run github.com/trco/claudarium/cmd/app@master --open
 ```
 
 Opens http://localhost:8787. Needs Go installed; the module pins Go 1.23,
-which the toolchain fetches automatically if your local Go is older (older
-versions crash with `missing LC_UUID` on recent macOS).
+which the toolchain fetches automatically if your local Go is older.
 
-## Features
+## Tabs
 
-| View | Mode | What it shows |
-| --- | --- | --- |
-| Memory | edit | Your global `~/.claude/CLAUDE.md`, with live markdown preview. Each save shows a diff and writes a timestamped `.bak` backup first. |
-| Capabilities | read-only | Every agent, skill and command Claude can use, across global config, plugins and repos. Click a row for details + Reveal in Finder. |
-| Plugins | read-only | Plugins installed from your marketplaces. |
-| Marketplaces | read-only | The plugin marketplaces Claude knows about, and where each is sourced from. |
-| MCP | read-only | Configured MCP servers, global and per-repo. Env values are hidden — only variable names show. |
-| Doctor | read-only | Health checks: duplicate permission rules, missing paths, plugins enabled but not installed, MCP commands off `PATH`, and stale repos. |
+| Tab | What it shows |
+| --- | --- |
+| Memory | Your global `~/.claude/CLAUDE.md`, edited with a live preview. Each save shows a diff and writes a timestamped `.bak` backup first. |
+| Capabilities | Every agent, skill and command Claude can use, across global config, plugins and repos. |
+| Plugins | Installed plugins — description, author and what each contributes. |
+| Marketplaces | The plugin marketplaces Claude knows about, and how many plugins you've installed from each. |
+| MCP | Configured MCP servers, global and per-repo. Env values are hidden — only variable names show. |
+| Doctor | Config health checks: shadowed capabilities, plugins enabled but not installed or from an unknown marketplace, MCP commands off `PATH`, duplicate MCP names, stale repos, malformed settings. |
+| Settings | Hooks, statusLine, model and a permissions summary. |
 
-Capabilities and MCP also pick up sibling repos with a `.claude` dir — even
-ones you've never opened in Claude. Add more roots with `--scan ~/a,~/b`.
+Every table has per-column filters, click-to-sort and a live count. The header
+**Search** box looks across every tab at once. Click a row for full details,
+then **Reveal in Finder** or **View raw**. A dark-mode toggle sits in the header.
+
+## Editing
+
+Most tabs are read-only. The few writable actions back the file up first:
+
+| Action | Writes |
+| --- | --- |
+| Edit Memory (diff shown before saving) | `~/.claude/CLAUDE.md` |
+| Enable / disable a plugin | `settings.json` |
+| Turn an MCP server on / off | `~/.claude.json` (nothing is deleted — a disabled server is kept and restored on re-enable) |
 
 ## Flags
 
@@ -36,13 +47,7 @@ ones you've never opened in Claude. Add more roots with `--scan ~/a,~/b`.
 | `--open` | off | Open the app in your browser on start. |
 | `--scan a,b` | — | Extra dirs to scan one level deep for repos with a `.claude` dir. |
 
-## Notes
-
-It writes to your real config. Only Memory is editable, and it always backs up
-first. `settings.json` is read-only (used just for the Plugins view's
-enabled/disabled state); everything else is inspection only.
-
 ## Roadmap
 
-Not yet: project-level config editing, enabling/disabling plugins or MCPs,
-adding MCP servers, and hooks / statusline / keybindings editors.
+Not yet: project-level config editing, adding MCP servers, and hooks /
+statusLine / keybindings editors.

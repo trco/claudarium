@@ -65,7 +65,19 @@ func MCPPage(c *fiber.Ctx) error {
 	return render(c, "mcp", fiber.Map{
 		"Nav": "mcp", "Title": "MCP servers",
 		"Servers": config.MCPServers(),
+		"OK":      c.Query("ok") != "",
 	})
+}
+
+// MCPToggle enables/disables an MCP server by writing ~/.claude.json (backed up).
+func MCPToggle(c *fiber.Ctx) error {
+	name := c.FormValue("name")
+	scope := c.FormValue("scope")
+	enabled := c.FormValue("enabled") == "true"
+	if _, err := config.SetMCPEnabled(scope, name, enabled); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+	return c.Redirect("/mcp?ok=1")
 }
 
 func HealthPage(c *fiber.Ctx) error {

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
 
 func TestOlderThan(t *testing.T) {
@@ -233,6 +235,58 @@ func TestSetPluginEnabled(t *testing.T) {
 	}
 	if cur, _ := os.ReadFile(sp); !strings.Contains(string(cur), `"bar@mkt":true`) {
 		t.Errorf("want bar@mkt=true, got %s", cur)
+	}
+}
+
+func TestSetMCPEnabled(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+
+	cj := filepath.Join(home, ".claude.json")
+	writeFile(t, cj, `{"mcpServers":{"g":{"command":"echo"}},"projects":{"/repo":{"mcpServers":{"r":{"command":"echo"}}}}}`)
+
+	// Global disable: moved out of mcpServers into the stash, not deleted.
+	if _, err := SetMCPEnabled("global", "g", false); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(cj)
+	if gjson.GetBytes(b, "mcpServers.g").Exists() {
+		t.Error("g should be moved out of mcpServers")
+	}
+	if !gjson.GetBytes(b, globalDisabledMCPKey+".g").Exists() {
+		t.Error("g should be stashed, not deleted")
+	}
+	if s := findServer(MCPServers(), "g"); s == nil || s.Enabled {
+		t.Errorf("g should still be listed as disabled: %+v", s)
+	}
+	// Global enable: moved back.
+	if _, err := SetMCPEnabled("global", "g", true); err != nil {
+		t.Fatal(err)
+	}
+	b, _ = os.ReadFile(cj)
+	if !gjson.GetBytes(b, "mcpServers.g").Exists() {
+		t.Error("g should be restored to mcpServers")
+	}
+
+	// Repo disable: added to disabledMcpServers; the definition is preserved.
+	if _, err := SetMCPEnabled("repo:/repo", "r", false); err != nil {
+		t.Fatal(err)
+	}
+	b, _ = os.ReadFile(cj)
+	if !gjson.GetBytes(b, `projects./repo.mcpServers.r`).Exists() {
+		t.Error("r definition should be preserved")
+	}
+	if s := findServer(MCPServers(), "r"); s == nil || s.Enabled {
+		t.Errorf("r should be disabled: %+v", s)
+	}
+	// Repo enable: removed from the list.
+	if _, err := SetMCPEnabled("repo:/repo", "r", true); err != nil {
+		t.Fatal(err)
+	}
+	if s := findServer(MCPServers(), "r"); s == nil || !s.Enabled {
+		t.Errorf("r should be enabled again: %+v", s)
 	}
 }
 

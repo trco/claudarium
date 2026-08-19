@@ -60,7 +60,15 @@
           <td class="px-3 py-1.5">
             {{range .EnvKeys}}<span class="chip chip-gray font-mono inline-block mr-1 mb-1">{{.}}</span>{{end}}
           </td>
-          <td class="px-3 py-1.5">{{if .Enabled}}<span class="chip chip-green">on</span>{{else}}<span class="chip chip-gray">off</span>{{end}}</td>
+          <td class="px-3 py-1.5" @click.stop>
+            <form action="/mcp/toggle" method="post">
+              <input type="hidden" name="name" value="{{.Name}}">
+              <input type="hidden" name="scope" value="{{.Scope}}">
+              <input type="hidden" name="enabled" value="{{if .Enabled}}false{{else}}true{{end}}">
+              <button type="submit" title="click to turn {{if .Enabled}}off{{else}}on{{end}}"
+                      class="chip cursor-pointer hover:opacity-70 {{if .Enabled}}chip-green{{else}}chip-gray{{end}}">{{if .Enabled}}on{{else}}off{{end}}</button>
+            </form>
+          </td>
         </tr>
         {{end}}
       </tbody>

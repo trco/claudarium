@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strings"
 
 	"github.com/tidwall/sjson"
 )
@@ -21,8 +20,7 @@ func SetPluginEnabled(name string, enabled bool) (string, error) {
 	}
 	// Escape sjson path metacharacters so the full plugin id (which contains
 	// '@', and could contain '.') is treated as one literal key.
-	esc := strings.NewReplacer(".", `\.`, "@", `\@`, "*", `\*`, "?", `\?`)
-	key := "enabledPlugins." + esc.Replace(name)
+	key := "enabledPlugins." + sjsonEscape(name)
 	updated, err := sjson.SetBytes(b, key, enabled)
 	if err != nil {
 		return "", err
