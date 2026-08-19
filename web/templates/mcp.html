@@ -61,13 +61,18 @@
             {{range .EnvKeys}}<span class="chip chip-gray font-mono inline-block mr-1 mb-1">{{.}}</span>{{end}}
           </td>
           <td class="px-3 py-1.5" @click.stop>
-            <form action="/mcp/toggle" method="post">
-              <input type="hidden" name="name" value="{{.Name}}">
-              <input type="hidden" name="scope" value="{{.Scope}}">
-              <input type="hidden" name="enabled" value="{{if .Enabled}}false{{else}}true{{end}}">
-              <button type="submit" title="click to turn {{if .Enabled}}off{{else}}on{{end}}"
-                      class="chip cursor-pointer hover:opacity-70 {{if .Enabled}}chip-green{{else}}chip-gray{{end}}">{{if .Enabled}}on{{else}}off{{end}}</button>
-            </form>
+            <div class="flex items-center gap-2">
+              <span class="chip {{if .Enabled}}chip-green{{else}}chip-gray{{end}}">{{if .Enabled}}on{{else}}off{{end}}</span>
+              <form action="/mcp/toggle" method="post">
+                <input type="hidden" name="name" value="{{.Name}}">
+                <input type="hidden" name="scope" value="{{.Scope}}">
+                <input type="hidden" name="enabled" value="{{if .Enabled}}false{{else}}true{{end}}">
+                <button type="submit" role="switch" aria-checked="{{if .Enabled}}true{{else}}false{{end}}" title="turn {{if .Enabled}}off{{else}}on{{end}}"
+                        class="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors {{if .Enabled}}bg-green-500{{else}}bg-gray-300 dark:bg-gray-600{{end}}">
+                  <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform {{if .Enabled}}translate-x-4{{else}}translate-x-0.5{{end}}"></span>
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
         {{end}}
