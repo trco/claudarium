@@ -31,7 +31,18 @@ func PluginsPage(c *fiber.Ctx) error {
 	return render(c, "plugins", fiber.Map{
 		"Nav": "plugins", "Title": "Plugins",
 		"Plugins": plugins, "MarketplaceNames": sortedKeys(markets),
+		"OK": c.Query("ok") != "",
 	})
+}
+
+// PluginToggle enables/disables a plugin by writing settings.json (backed up).
+func PluginToggle(c *fiber.Ctx) error {
+	name := c.FormValue("name")
+	enabled := c.FormValue("enabled") == "true"
+	if _, err := config.SetPluginEnabled(name, enabled); err != nil {
+		return c.Status(fiber.StatusInternalServerError).SendString(err.Error())
+	}
+	return c.Redirect("/plugins?ok=1")
 }
 
 func sortedKeys(m map[string]bool) []string {
@@ -61,5 +72,20 @@ func HealthPage(c *fiber.Ctx) error {
 	return render(c, "health", fiber.Map{
 		"Nav": "health", "Title": "Doctor",
 		"Issues": config.HealthChecks(),
+	})
+}
+
+func SearchPage(c *fiber.Ctx) error {
+	q := c.Query("q")
+	return render(c, "search", fiber.Map{
+		"Nav": "search", "Title": "Search",
+		"Query": q, "Results": config.Search(q),
+	})
+}
+
+func SettingsPage(c *fiber.Ctx) error {
+	return render(c, "settings", fiber.Map{
+		"Nav": "settings", "Title": "Settings",
+		"Settings": config.Settings(),
 	})
 }

@@ -206,6 +206,36 @@ func TestHealthChecks_ExtraChecks(t *testing.T) {
 	}
 }
 
+func TestSetPluginEnabled(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+
+	sp := filepath.Join(home, ".claude/settings.json")
+	writeFile(t, sp, `{"enabledPlugins":{"foo@mkt":true}}`)
+
+	bak, err := SetPluginEnabled("foo@mkt", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bak == "" {
+		t.Fatal("expected a backup path")
+	}
+	if cur, _ := os.ReadFile(sp); !strings.Contains(string(cur), `"foo@mkt":false`) {
+		t.Errorf("want foo@mkt=false, got %s", cur)
+	}
+	if prev, _ := os.ReadFile(bak); !strings.Contains(string(prev), `"foo@mkt":true`) {
+		t.Errorf("backup should hold the previous value, got %s", prev)
+	}
+	if _, err := SetPluginEnabled("bar@mkt", true); err != nil {
+		t.Fatal(err)
+	}
+	if cur, _ := os.ReadFile(sp); !strings.Contains(string(cur), `"bar@mkt":true`) {
+		t.Errorf("want bar@mkt=true, got %s", cur)
+	}
+}
+
 func hasIssue(issues []Issue, level, sub string) bool {
 	for _, i := range issues {
 		if i.Level == level && strings.Contains(i.Message, sub) {

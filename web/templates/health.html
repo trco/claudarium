@@ -39,12 +39,14 @@
       </thead>
       <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
         {{range .Issues}}
-        <tr data-row data-level="{{.Level}}" data-area="{{.Area}}" data-message="{{lower .Message}}">
+        <tr data-row data-level="{{.Level}}" data-area="{{.Area}}" data-message="{{lower .Message}}"
+            data-detail='{{json .}}' @click="$store.drawer.show(JSON.parse($el.dataset.detail))"
+            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <td class="px-3 py-1.5">
             <span class="chip {{if eq .Level "error"}}chip-red{{else if eq .Level "warn"}}chip-amber{{else}}chip-gray{{end}}">{{.Level}}</span>
           </td>
           <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{.Area}}</td>
-          <td class="px-3 py-1.5 text-gray-700 dark:text-gray-200">{{.Message}}</td>
+          <td class="px-3 py-1.5 text-gray-700 dark:text-gray-200">{{.Message}}{{if .Path}} <span class="text-gray-300 dark:text-gray-600">›</span>{{end}}</td>
         </tr>
         {{end}}
       </tbody>

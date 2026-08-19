@@ -62,10 +62,14 @@ func New(dev bool) *fiber.App {
 
 	app.Get("/capabilities", handlers.CapabilitiesPage)
 	app.Get("/plugins", handlers.PluginsPage)
+	app.Post("/plugins/toggle", handlers.PluginToggle)
 	app.Get("/marketplaces", handlers.MarketplacesPage)
 	app.Get("/mcp", handlers.MCPPage)
 	app.Get("/health", handlers.HealthPage)
+	app.Get("/settings", handlers.SettingsPage)
+	app.Get("/search", handlers.SearchPage)
 	app.Post("/open", handlers.OpenFile)
+	app.Get("/raw", handlers.RawFile)
 
 	return app
 }

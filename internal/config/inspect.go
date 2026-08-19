@@ -191,6 +191,7 @@ type Plugin struct {
 	Homepage     string
 	License      string
 	Components   string // e.g. "3 agents · 2 skills" (what it contributes)
+	Path         string // install dir (for Reveal in Finder)
 }
 
 type Marketplace struct {
@@ -237,6 +238,7 @@ func Plugins() []Plugin {
 					Homepage:     firstNonEmpty(mani.Get("homepage").String(), mani.Get("repository").String()),
 					License:      mani.Get("license").String(),
 					Components:   countComponents(installPath),
+					Path:         installPath,
 				})
 				return true
 			})

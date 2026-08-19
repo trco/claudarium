@@ -1,0 +1,60 @@
+{{$s := .Settings}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Settings</h1>
+<div class="lede">
+  <span class="chip chip-gray shrink-0">read-only</span>
+  <p>Parts of <span class="code">settings.json</span> that don't have their own tab — hooks, statusLine and a permissions summary.</p>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-3 mb-4">
+  <div class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+    <div class="text-xs uppercase tracking-wide text-gray-400">Model</div>
+    <div class="text-sm text-gray-800 dark:text-gray-100 font-mono">{{if $s.Model}}{{$s.Model}}{{else}}<span class="text-gray-400">default</span>{{end}}</div>
+  </div>
+  <div class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+    <div class="text-xs uppercase tracking-wide text-gray-400">statusLine</div>
+    <div class="text-sm text-gray-800 dark:text-gray-100 font-mono truncate" title="{{$s.StatusLine}}">{{if $s.StatusLine}}{{$s.StatusLine}}{{else}}<span class="text-gray-400">none</span>{{end}}</div>
+  </div>
+  <div class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
+    <div class="text-xs uppercase tracking-wide text-gray-400">Permissions</div>
+    <div class="text-sm text-gray-800 dark:text-gray-100">
+      <span class="chip chip-green">{{$s.Allow}} allow</span>
+      <span class="chip chip-red">{{$s.Deny}} deny</span>
+      <span class="chip chip-amber">{{$s.Ask}} ask</span>
+    </div>
+  </div>
+</div>
+
+{{if $s.AdditionalDirs}}
+<div class="mb-4">
+  <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Additional directories</h2>
+  <ul class="text-xs font-mono text-gray-500 dark:text-gray-400 space-y-0.5">
+    {{range $s.AdditionalDirs}}<li>{{.}}</li>{{end}}
+  </ul>
+</div>
+{{end}}
+
+<h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Hooks</h2>
+{{if not $s.Hooks}}
+<div class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No hooks configured.</div>
+{{else}}
+<div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+  <table class="w-full text-sm">
+    <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+      <tr>
+        <th class="px-3 py-2 font-medium">Event</th>
+        <th class="px-3 py-2 font-medium">Matcher</th>
+        <th class="px-3 py-2 font-medium">Command</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+      {{range $s.Hooks}}
+      <tr>
+        <td class="px-3 py-1.5"><span class="chip chip-indigo">{{.Event}}</span></td>
+        <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{if .Matcher}}{{.Matcher}}{{else}}<span class="text-gray-300 dark:text-gray-600">*</span>{{end}}</td>
+        <td class="px-3 py-1.5 font-mono text-xs text-gray-700 dark:text-gray-200 max-w-lg truncate" title="{{.Command}}">{{.Command}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}

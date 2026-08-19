@@ -31,8 +31,13 @@
             <a href="/marketplaces" class="{{$link}} {{if eq $nav "marketplaces"}}{{$active}}{{else}}{{$idle}}{{end}}">Marketplaces<sup class="{{$badge}}">{{$c.Marketplaces}}</sup></a>
             <a href="/mcp" class="{{$link}} {{if eq $nav "mcp"}}{{$active}}{{else}}{{$idle}}{{end}}">MCPs<sup class="{{$badge}}">{{$c.MCP}}</sup></a>
             <a href="/health" class="{{$link}} {{if eq $nav "health"}}{{$active}}{{else}}{{$idle}}{{end}}">Doctor<sup class="{{$badge}}">{{$c.Health}}</sup></a>
+            <a href="/settings" class="{{$link}} {{if eq $nav "settings"}}{{$active}}{{else}}{{$idle}}{{end}}">Settings</a>
+            <form action="/search" method="get" class="ml-auto">
+              <input type="search" name="q" {{if .Query}}value="{{.Query}}"{{end}} placeholder="search…"
+                     class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs w-40 focus:outline-none focus:ring-1 focus:ring-blue-200">
+            </form>
             <button type="button" onclick="const d=document.documentElement.classList.toggle('dark'); localStorage.theme=d?'dark':'light'"
-                    class="ml-auto text-lg text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100" title="Toggle dark mode">◑</button>
+                    class="ml-2 text-lg text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-100" title="Toggle dark mode">◑</button>
         </div>
     </header>
 
@@ -83,8 +88,12 @@
               <div class="text-gray-700 dark:text-gray-200 break-words whitespace-pre-wrap font-mono text-xs" x-text="Array.isArray(v) ? v.join(', ') : v"></div>
             </div>
           </template>
-          <button x-show="$store.drawer.fields.Path" @click="$store.drawer.reveal($store.drawer.fields.Path)"
-                  class="mt-2 px-3 py-1.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700">Reveal in Finder</button>
+          <div class="mt-2 flex gap-2">
+            <button x-show="$store.drawer.fields.Path" @click="$store.drawer.reveal($store.drawer.fields.Path)"
+                    class="px-3 py-1.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700">Reveal in Finder</button>
+            <button x-show="$store.drawer.fields.Path && $store.drawer.fields.Path.endsWith('.md')" @click="$store.drawer.viewRaw($store.drawer.fields.Path)"
+                    class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs hover:bg-gray-100 dark:hover:bg-gray-700">View raw</button>
+          </div>
         </div>
       </div>
     </div>
