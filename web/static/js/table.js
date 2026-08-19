@@ -122,6 +122,28 @@ document.addEventListener('alpine:init', () => {
     },
   }));
 
+  // In-app confirmation dialog. Call $store.confirm.ask(message, onYes).
+  Alpine.store('confirm', {
+    open: false,
+    message: '',
+    _cb: null,
+    ask(message, cb) {
+      this.message = message;
+      this._cb = cb;
+      this.open = true;
+    },
+    yes() {
+      const cb = this._cb;
+      this.open = false;
+      this._cb = null;
+      if (cb) cb();
+    },
+    cancel() {
+      this.open = false;
+      this._cb = null;
+    },
+  });
+
   // Read-only detail slide-over, shared across pages.
   Alpine.store('drawer', {
     open: false,
