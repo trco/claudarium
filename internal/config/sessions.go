@@ -30,7 +30,8 @@ type Session struct {
 	Model    string    // model of the last assistant turn
 	Started  time.Time `json:"-"`
 	Ended    time.Time `json:"-"`
-	Active   bool      // activity in the last 5 minutes
+	Active   bool      // a Claude process is running it (or activity in the last 5 min)
+	Old      bool      `json:"-"` // started more than 7 days ago
 	Worktree bool      // ran inside a .claude/worktrees checkout
 
 	Prompts       int // messages you typed (tool results excluded)
@@ -546,6 +547,7 @@ func Sessions() []Session {
 	live := liveSessionIDs()
 	for i := range out {
 		out[i].Active = live[out[i].ID] || (!out[i].Ended.IsZero() && time.Since(out[i].Ended) < 5*time.Minute)
+		out[i].Old = !out[i].Started.IsZero() && time.Since(out[i].Started) > 7*24*time.Hour
 	}
 	sort.Slice(out, func(i, j int) bool { return sessionBefore(out[i], out[j]) })
 	return out

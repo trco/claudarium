@@ -56,7 +56,7 @@
           <td class="px-3 py-1.5"><span class="chip chip-green font-mono" title="{{.Project}}">{{.Repo}}</span></td>
           <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 max-w-[10rem] truncate" title="{{.Branch}}">{{.Branch}}{{if .Worktree}} <span class="chip chip-purple">worktree</span>{{end}}</td>
           <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" title="{{.Model}}">{{trimPrefix .Model "claude-"}}</td>
-          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.StartedFmt}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs whitespace-nowrap {{if .Old}}text-red-600 dark:text-red-400 font-medium{{else}}text-gray-500 dark:text-gray-400{{end}}" {{if .Old}}title="started more than 7 days ago"{{end}}>{{.StartedFmt}}</td>
           <td class="px-3 py-1.5 text-right text-gray-500 dark:text-gray-400 whitespace-nowrap tabular-nums">{{.DurationFmt}}</td>
           <td class="px-3 py-1.5 text-right tabular-nums">{{.Prompts}}</td>
           <td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums">{{.TokensFmt}}</td>
