@@ -15,18 +15,27 @@ which the toolchain fetches automatically if your local Go is older.
 
 ## Tabs
 
-| Tab | What it shows |
-| --- | --- |
-| Memory | Your global `~/.claude/CLAUDE.md`, edited with a live preview. Each save shows a diff and writes a timestamped `.bak` backup first. |
-| Capabilities | Every agent, skill and command Claude can use, across global config, plugins and repos. |
-| Plugins | Installed plugins — description, author and what each contributes. |
-| Marketplaces | The plugin marketplaces Claude knows about, and how many plugins you've installed from each. |
-| MCP | Configured MCP servers, global and per-repo. Env values are hidden — only variable names show. |
-| Doctor | Config health checks: shadowed capabilities, plugins enabled but not installed or from an unknown marketplace, MCP commands off `PATH`, duplicate MCP names, stale repos, malformed settings. |
-| Settings | Hooks, statusLine, model and a permissions summary. |
+Grouped in the sidebar:
+
+| Group | Tab | What it shows |
+| --- | --- | --- |
+| Config | Memory | Your global `~/.claude/CLAUDE.md`, edited with a live preview. Each save keeps a backup — manage them in Logs. |
+| | Settings | Hooks, statusLine, model and a permissions summary. |
+| Extensions | Capabilities | Every agent, skill and command Claude can use, across global config, plugins and repos. |
+| | Plugins | Installed plugins — description, author and what each contributes. Enable/disable with a switch. |
+| | Marketplaces | The plugin marketplaces Claude knows about, and how many plugins you've installed from each. |
+| | MCP | Every MCP server Claude sees — global, per-repo, plugin and claude.ai. Servers defined in `~/.claude.json` toggle on/off; the rest are read-only. |
+| Activity | Sessions | Every Claude Code session on this machine: prompt, project, branch, model, time spent, tokens and cost (sub-agent usage included). |
+| | Worktrees | Git worktrees of your repos, with the sessions that ran in each. |
+| | Usage | Tokens and estimated cost by day, project and model. |
+| Health | Doctor | Config health checks: shadowed capabilities, plugins enabled but not installed, MCP commands off `PATH`, stale repos, malformed settings. |
+| | Logs | Every change Claudarium made — Memory edits keep a snapshot with a diff; toggles are logged without a backup. |
+
+Cost figures are the API list-price equivalent of the tokens used (cache reads
+and writes included), not your bill.
 
 Every table has per-column filters, click-to-sort and a live count. The header
-**Search** box looks across every tab at once. Click a row for full details,
+**Search** box looks across capabilities, plugins, marketplaces, MCP, sessions and worktrees. Click a row for full details,
 then **Reveal in Finder** or **View raw**. A dark-mode toggle sits in the header.
 
 ## Editing

@@ -1,6 +1,9 @@
 package config
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // SearchResult is one cross-tab match.
 type SearchResult struct {
@@ -11,7 +14,8 @@ type SearchResult struct {
 	Path   string // for Reveal / raw when available
 }
 
-// Search returns matches for q across every inspectable config surface
+// Search returns matches for q across capabilities, plugins, marketplaces, MCP,
+// sessions and worktrees
 // (case-insensitive substring over name + detail + source). Empty q → nil.
 func Search(q string) []SearchResult {
 	q = strings.ToLower(strings.TrimSpace(q))
@@ -46,6 +50,16 @@ func Search(q string) []SearchResult {
 	for _, s := range MCPServers() {
 		if match(s.Name, s.Target, s.Scope) {
 			out = append(out, SearchResult{"mcp", s.Name, s.Target, s.Scope, ""})
+		}
+	}
+	for _, s := range Sessions() {
+		if match(s.Title, s.Repo, s.Branch, s.Project) {
+			out = append(out, SearchResult{"session", s.Title, s.Repo + " · " + s.Branch + " · " + s.StartedFmt, "repo:" + s.Project, s.Path})
+		}
+	}
+	for _, w := range Worktrees() {
+		if match(w.Path, w.Branch, w.Repo) {
+			out = append(out, SearchResult{"worktree", filepath.Base(w.Path), w.Branch, "repo:" + w.Repo, w.Path})
 		}
 	}
 	return out

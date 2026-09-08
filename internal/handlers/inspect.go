@@ -134,3 +134,39 @@ func AuditClear(c *fiber.Ctx) error {
 	}
 	return c.Redirect("/audit")
 }
+
+func SessionsPage(c *fiber.Ctx) error {
+	sessions := config.Sessions()
+	projects, models := map[string]bool{}, map[string]bool{}
+	for _, s := range sessions {
+		projects[s.Repo] = true
+		if s.Model != "" {
+			models[s.Model] = true
+		}
+	}
+	usage := config.UsageOf(sessions)
+	const maxRows = 500 // ponytail: the page embeds a JSON detail per row; cap it, newest first
+	shown := sessions
+	if len(shown) > maxRows {
+		shown = shown[:maxRows]
+	}
+	return render(c, "sessions", fiber.Map{
+		"Nav": "sessions", "Title": "Sessions",
+		"Sessions": shown, "Total": len(sessions), "Projects": sortedKeys(projects), "Models": sortedKeys(models),
+		"Usage": usage,
+	})
+}
+
+func WorktreesPage(c *fiber.Ctx) error {
+	return render(c, "worktrees", fiber.Map{
+		"Nav": "worktrees", "Title": "Worktrees",
+		"Worktrees": config.Worktrees(),
+	})
+}
+
+func UsagePage(c *fiber.Ctx) error {
+	return render(c, "usage", fiber.Map{
+		"Nav": "usage", "Title": "Usage",
+		"Usage": config.Usage(),
+	})
+}

@@ -17,22 +17,8 @@
 </head>
 <body class="min-h-screen bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
     <header class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <div class="max-w-5xl mx-auto px-4 flex items-center gap-1 h-14">
+        <div class="px-4 flex items-center gap-1 h-14">
             <a href="/memory" class="font-semibold text-gray-900 dark:text-gray-100 mr-4">Claudarium</a>
-            {{$nav := .Nav}}
-            {{$c := .Counts}}
-            {{$link := "px-3 py-1.5 rounded text-sm"}}
-            {{$active := "text-blue-700 dark:text-blue-300 font-semibold"}}
-            {{$idle := "text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"}}
-            {{$badge := "ml-0.5 align-super text-[10px] leading-none px-1 py-0.5 rounded-full bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200"}}
-            <a href="/memory" class="{{$link}} {{if eq $nav "memory"}}{{$active}}{{else}}{{$idle}}{{end}}">Memory</a>
-            <a href="/capabilities" class="{{$link}} {{if eq $nav "capabilities"}}{{$active}}{{else}}{{$idle}}{{end}}">Capabilities<sup class="{{$badge}}">{{$c.Capabilities}}</sup></a>
-            <a href="/plugins" class="{{$link}} {{if eq $nav "plugins"}}{{$active}}{{else}}{{$idle}}{{end}}">Plugins<sup class="{{$badge}}">{{$c.Plugins}}</sup></a>
-            <a href="/marketplaces" class="{{$link}} {{if eq $nav "marketplaces"}}{{$active}}{{else}}{{$idle}}{{end}}">Marketplaces<sup class="{{$badge}}">{{$c.Marketplaces}}</sup></a>
-            <a href="/mcp" class="{{$link}} {{if eq $nav "mcp"}}{{$active}}{{else}}{{$idle}}{{end}}">MCPs<sup class="{{$badge}}">{{$c.MCP}}</sup></a>
-            <a href="/health" class="{{$link}} {{if eq $nav "health"}}{{$active}}{{else}}{{$idle}}{{end}}">Doctor<sup class="{{$badge}}">{{$c.Health}}</sup></a>
-            <a href="/settings" class="{{$link}} {{if eq $nav "settings"}}{{$active}}{{else}}{{$idle}}{{end}}">Settings</a>
-            <a href="/audit" class="{{$link}} {{if eq $nav "audit"}}{{$active}}{{else}}{{$idle}}{{end}}">Logs<sup class="{{$badge}}">{{$c.Logs}}</sup></a>
             <form action="/search" method="get" class="ml-auto">
               <input type="search" name="q" {{if .Query}}value="{{.Query}}"{{end}} placeholder="search…"
                      class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs w-40 focus:outline-none focus:ring-1 focus:ring-blue-200">
@@ -42,20 +28,57 @@
         </div>
     </header>
 
-    {{if .OK}}
-    <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false,3000)"
-         class="max-w-5xl mx-auto px-4 mt-4">
-        <div class="rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-2 text-sm">Saved. A timestamped .bak backup was written next to the file.</div>
-    </div>
-    {{end}}
+    {{$nav := .Nav}}
+    {{$c := .Counts}}
+    {{$item := "flex items-center justify-between gap-2 px-2.5 py-1.5 rounded text-sm"}}
+    {{$active := "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"}}
+    {{$idle := "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700/50 dark:hover:text-gray-100"}}
+    {{$badge := "text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-200 tabular-nums"}}
+    {{$warn := "text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 tabular-nums"}}
+    {{$group := "px-2.5 mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500"}}
+    <div class="flex items-start">
+        <aside class="w-56 shrink-0 self-stretch min-h-[calc(100vh-3.5rem)] border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-4 space-y-5" aria-label="Navigation">
+            <section>
+                <div class="{{$group}}">Config</div>
+                <a href="/memory" class="{{$item}} {{if eq $nav "memory"}}{{$active}}{{else}}{{$idle}}{{end}}">Memory</a>
+                <a href="/settings" class="{{$item}} {{if eq $nav "settings"}}{{$active}}{{else}}{{$idle}}{{end}}">Settings</a>
+            </section>
+            <section>
+                <div class="{{$group}}">Extensions</div>
+                <a href="/capabilities" class="{{$item}} {{if eq $nav "capabilities"}}{{$active}}{{else}}{{$idle}}{{end}}">Capabilities <span class="{{$badge}}">{{$c.Capabilities}}</span></a>
+                <a href="/plugins" class="{{$item}} {{if eq $nav "plugins"}}{{$active}}{{else}}{{$idle}}{{end}}">Plugins <span class="{{$badge}}">{{$c.Plugins}}</span></a>
+                <a href="/marketplaces" class="{{$item}} {{if eq $nav "marketplaces"}}{{$active}}{{else}}{{$idle}}{{end}}">Marketplaces <span class="{{$badge}}">{{$c.Marketplaces}}</span></a>
+                <a href="/mcp" class="{{$item}} {{if eq $nav "mcp"}}{{$active}}{{else}}{{$idle}}{{end}}">MCP <span class="{{$badge}}">{{$c.MCP}}</span></a>
+            </section>
+            <section>
+                <div class="{{$group}}">Activity</div>
+                <a href="/sessions" class="{{$item}} {{if eq $nav "sessions"}}{{$active}}{{else}}{{$idle}}{{end}}">Sessions <span class="{{$badge}}">{{$c.Sessions}}</span></a>
+                <a href="/worktrees" class="{{$item}} {{if eq $nav "worktrees"}}{{$active}}{{else}}{{$idle}}{{end}}">Worktrees <span class="{{$badge}}">{{$c.Worktrees}}</span></a>
+                <a href="/usage" class="{{$item}} {{if eq $nav "usage"}}{{$active}}{{else}}{{$idle}}{{end}}">Usage</a>
+            </section>
+            <section>
+                <div class="{{$group}}">Health</div>
+                <a href="/health" class="{{$item}} {{if eq $nav "health"}}{{$active}}{{else}}{{$idle}}{{end}}">Doctor <span class="{{if $c.Problems}}{{$warn}}{{else}}{{$badge}}{{end}}">{{$c.Health}}</span></a>
+                <a href="/audit" class="{{$item}} {{if eq $nav "audit"}}{{$active}}{{else}}{{$idle}}{{end}}">Logs <span class="{{$badge}}">{{$c.Logs}}</span></a>
+            </section>
+        </aside>
 
-    <main class="max-w-5xl mx-auto px-4 py-6">
-        {{embed}}
-    </main>
+        <div class="flex-1 min-w-0">
+            {{if .OK}}
+            <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false,3000)" class="px-6 mt-4">
+                <div class="rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-2 text-sm">Saved. A timestamped .bak backup was written next to the file.</div>
+            </div>
+            {{end}}
 
-    <div id="to-top" class="hidden max-w-5xl mx-auto px-4 pb-8 text-center">
-      <button type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"
-              class="text-sm text-blue-600 dark:text-blue-400 hover:underline">↑ Back to top</button>
+            <main class="px-6 py-6">
+                {{embed}}
+            </main>
+
+            <div id="to-top" class="hidden px-6 pb-8 text-center">
+              <button type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+                      class="text-sm text-blue-600 dark:text-blue-400 hover:underline">↑ Back to top</button>
+            </div>
+        </div>
     </div>
     <script>
       (function () {

@@ -1,0 +1,56 @@
+{{$u := .Usage}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Usage</h1>
+<div class="lede">
+  <p>Billed tokens and estimated cost across all sessions, from each transcript's usage figures.
+    <span class="text-gray-400 dark:text-gray-500">Cost uses list prices (cache reads/writes included) and is approximate.</span>
+  </p>
+</div>
+
+{{template "partials/usage-tiles" $u}}
+
+{{$tbl := "w-full text-sm"}}
+{{$head := "bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left"}}
+{{$wrap := "overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"}}
+<div class="grid gap-6 lg:grid-cols-2">
+  <section>
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">By day <span class="font-normal text-gray-400">(last 30 days)</span></h2>
+    <div class="{{$wrap}}">
+      <table class="{{$tbl}}">
+        <thead class="{{$head}}"><tr><th class="px-3 py-2 font-medium">Day</th><th class="px-3 py-2 font-medium text-right">Sessions</th><th class="px-3 py-2 font-medium text-right">Tokens</th><th class="px-3 py-2 font-medium text-right">Cost (est.)</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {{range $u.ByDay}}
+          <tr><td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{.Key}}</td><td class="px-3 py-1.5 text-right tabular-nums">{{.Sessions}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums">{{.TokensFmt}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums" title="Estimate at API list price — not your bill">{{.CostFmt}}</td></tr>
+          {{else}}
+          <tr><td colspan="4" class="px-3 py-3 text-gray-400">No sessions in the last 30 days.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section>
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">By project <span class="font-normal text-gray-400">(all time)</span></h2>
+    <div class="{{$wrap}}">
+      <table class="{{$tbl}}">
+        <thead class="{{$head}}"><tr><th class="px-3 py-2 font-medium">Project</th><th class="px-3 py-2 font-medium text-right">Sessions</th><th class="px-3 py-2 font-medium text-right">Tokens</th><th class="px-3 py-2 font-medium text-right">Cost (est.)</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {{range $u.ByProject}}
+          <tr><td class="px-3 py-1.5"><span class="chip chip-green font-mono">{{.Key}}</span></td><td class="px-3 py-1.5 text-right tabular-nums">{{.Sessions}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums">{{.TokensFmt}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums" title="Estimate at API list price — not your bill">{{.CostFmt}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section>
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">By model <span class="font-normal text-gray-400">(all time)</span></h2>
+    <div class="{{$wrap}}">
+      <table class="{{$tbl}}">
+        <thead class="{{$head}}"><tr><th class="px-3 py-2 font-medium">Model</th><th class="px-3 py-2 font-medium text-right">Sessions</th><th class="px-3 py-2 font-medium text-right">Tokens</th><th class="px-3 py-2 font-medium text-right">Cost (est.)</th></tr></thead>
+        <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+          {{range $u.ByModel}}
+          <tr><td class="px-3 py-1.5 font-mono text-xs text-gray-700 dark:text-gray-200">{{.Key}}</td><td class="px-3 py-1.5 text-right tabular-nums">{{.Sessions}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums">{{.TokensFmt}}</td><td class="px-3 py-1.5 text-right font-mono text-xs tabular-nums" title="Estimate at API list price — not your bill">{{.CostFmt}}</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

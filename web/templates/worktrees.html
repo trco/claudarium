@@ -1,0 +1,62 @@
+{{$fi := "w-full min-w-[7rem] rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-2 py-1 text-xs font-normal focus:outline-none focus:ring-1 focus:ring-blue-200"}}
+{{$th := "px-3 pt-2 font-medium cursor-pointer select-none"}}
+<h1 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">Worktrees</h1>
+<div class="lede">
+  <p>Git worktrees of every known repo — where parked work lives, and which Claude sessions ran there.
+    <span class="text-gray-400 dark:text-gray-500">Click a row for details and Reveal in Finder.</span>
+  </p>
+</div>
+
+{{if not .Worktrees}}
+<div class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-500 dark:text-gray-400">No worktrees found in your known repos.</div>
+{{else}}
+<div x-data="tableFilter(['repo','name','branch'])">
+  <div class="flex items-center gap-4 mb-2 text-sm text-gray-500 dark:text-gray-400">
+    <span x-text="visible + ' of ' + total + ' shown'"></span>
+    <label class="inline-flex items-center gap-1">Group by
+      <select x-model="groupKey" @change="collapsed={}; refresh()" class="rounded border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 px-1.5 py-0.5 text-xs">
+        <option value="">None</option><option value="repo">Repo</option>
+      </select>
+    </label>
+    <button @click="clear()" class="ml-auto text-xs hover:text-gray-800 dark:hover:text-gray-100 underline">Clear filters</button>
+  </div>
+  <div class="overflow-x-auto rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400 text-left">
+        <tr>
+          <th class="{{$th}}" @click="sortBy('repo')">Repo <span x-show="sortKey==='repo'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('name')">Worktree <span x-show="sortKey==='name'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('branch')">Branch <span x-show="sortKey==='branch'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="px-3 pt-2 font-medium">HEAD</th>
+          <th class="px-3 pt-2 font-medium text-right">Changes</th>
+          <th class="px-3 pt-2 font-medium">Last commit</th>
+          <th class="{{$th}} text-right" @click="sortBy('sessions')">Sessions <span x-show="sortKey==='sessions'" x-text="sortDir===1?'▲':'▼'"></span></th>
+          <th class="{{$th}}" @click="sortBy('active')">Last activity <span x-show="sortKey==='active'" x-text="sortDir===1?'▲':'▼'"></span></th>
+        </tr>
+        <tr>
+          <th class="px-2 pb-2"><input x-model="filters.repo" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2"><input x-model="filters.name" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2"><input x-model="filters.branch" @input="refresh()" placeholder="filter…" class="{{$fi}}"></th>
+          <th class="px-2 pb-2" colspan="5"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+        {{range .Worktrees}}
+        <tr data-row data-repo="{{lower (base .Repo)}}" data-name="{{lower (base .Path)}}" data-branch="{{lower .Branch}}" data-sessions="{{.Sessions}}" data-active="{{.LastActiveUnix}}"
+            data-detail='{{json .}}' @click="$store.drawer.show(JSON.parse($el.dataset.detail))"
+            class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+          <td class="px-3 py-1.5"><span class="chip chip-green font-mono" title="{{.Repo}}">{{base .Repo}}</span></td>
+          <td class="px-3 py-1.5 text-gray-800 dark:text-gray-100 whitespace-nowrap" title="{{.Path}}">{{base .Path}}{{if .Claude}} <span class="chip chip-purple">claude</span>{{end}}{{if .Stale}} <span class="chip chip-red" title="directory no longer exists">stale</span>{{end}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{if .Detached}}<span class="chip chip-amber">detached</span>{{else}}{{.Branch}}{{end}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400">{{.Head}}</td>
+          <td class="px-3 py-1.5 text-right tabular-nums">{{if .Dirty}}<span class="chip chip-amber">{{.Dirty}} changed</span>{{else if not .Stale}}<span class="text-gray-400">clean</span>{{end}}</td>
+          <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400 max-w-sm truncate" title="{{.Subject}}">{{if .LastCommit}}<span class="text-xs whitespace-nowrap">{{.LastCommit}}</span> <span class="text-gray-400">·</span> {{.Subject}}{{end}}</td>
+          <td class="px-3 py-1.5 text-right tabular-nums">{{.Sessions}}</td>
+          <td class="px-3 py-1.5 font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{{.LastActive}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

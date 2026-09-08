@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,9 @@ func New(dev bool) *fiber.App {
 		return string(b), err
 	})
 
+	engine.AddFunc("trimPrefix", strings.TrimPrefix)
+	engine.AddFunc("base", filepath.Base)
+
 	app := fiber.New(fiber.Config{Views: engine, ViewsLayout: "layouts/base", PassLocalsToViews: true})
 	app.Use(recover.New())
 	app.Use(logger.New())
@@ -75,6 +79,9 @@ func New(dev bool) *fiber.App {
 	app.Post("/mcp/toggle", handlers.MCPToggle)
 	app.Get("/health", handlers.HealthPage)
 	app.Get("/settings", handlers.SettingsPage)
+	app.Get("/sessions", handlers.SessionsPage)
+	app.Get("/worktrees", handlers.WorktreesPage)
+	app.Get("/usage", handlers.UsagePage)
 	app.Get("/audit", handlers.AuditPage)
 	app.Post("/audit/delete", handlers.AuditDelete)
 	app.Post("/audit/clear", handlers.AuditClear)
@@ -82,6 +89,7 @@ func New(dev bool) *fiber.App {
 	app.Post("/open", handlers.OpenFile)
 	app.Get("/raw", handlers.RawFile)
 
+	go config.Warm() // index sessions + worktrees while the browser opens
 	return app
 }
 

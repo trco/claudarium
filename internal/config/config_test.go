@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -383,4 +384,184 @@ func findServer(servers []MCPServer, name string) *MCPServer {
 		}
 	}
 	return nil
+}
+
+func TestParseSession(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "abc.jsonl")
+	writeFile(t, p, strings.Join([]string{
+		`{"type":"user","timestamp":"2026-08-19T10:00:00.000Z","cwd":"/repo/x","gitBranch":"main","message":{"role":"user","content":"Fix the runner crash\nmore detail"}}`,
+		`{"type":"assistant","timestamp":"2026-08-19T10:00:05.000Z","message":{"id":"m1","model":"claude-opus-4-8","content":[{"type":"text","text":"ok"},{"type":"tool_use","name":"Bash"}],"usage":{"input_tokens":1000,"output_tokens":500,"cache_creation_input_tokens":200,"cache_read_input_tokens":4000}}}`,
+		`{"type":"user","timestamp":"2026-08-19T10:01:00.000Z","message":{"role":"user","content":[{"type":"tool_result","content":"done"}]}}`,
+		`{"type":"assistant","timestamp":"2026-08-19T10:12:00.000Z","message":{"id":"m2","model":"claude-opus-4-8","content":[{"type":"text","text":"done"}],"usage":{"input_tokens":100,"output_tokens":50}}}`,
+	}, "\n"))
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ID != "abc" || s.Project != "/repo/x" || s.Branch != "main" || s.Repo != "x" {
+		t.Errorf("meta wrong: %+v", s)
+	}
+	if s.Title != "Fix the runner crash" {
+		t.Errorf("title = %q, want first line of first prompt", s.Title)
+	}
+	if s.Prompts != 1 || s.AssistantMsgs != 2 || s.ToolCalls != 1 {
+		t.Errorf("counts wrong: prompts=%d (tool results must not count) assistant=%d tools=%d", s.Prompts, s.AssistantMsgs, s.ToolCalls)
+	}
+	if want := int64(1000 + 500 + 200 + 4000 + 100 + 50); s.Tokens != want {
+		t.Errorf("tokens = %d, want %d", s.Tokens, want)
+	}
+	if s.Model != "claude-opus-4-8" || s.Cost <= 0 {
+		t.Errorf("model/cost wrong: %s %f", s.Model, s.Cost)
+	}
+	if s.DurationFmt != "12m" {
+		t.Errorf("active time = %q, want 12m", s.DurationFmt)
+	}
+	if len(s.Daily) != 1 {
+		t.Errorf("daily buckets = %d, want 1 (all on one day)", len(s.Daily))
+	}
+}
+
+func TestParseSession_BillsEachResponseOnce(t *testing.T) {
+	// Claude Code writes one line per content block, each repeating the response usage.
+	p := filepath.Join(t.TempDir(), "d.jsonl")
+	line := `{"type":"assistant","timestamp":"2026-08-19T10:00:0%d.000Z","message":{"id":"same","model":"claude-opus-5","content":[{"type":"%s"}],"usage":{"input_tokens":10,"output_tokens":20,"cache_read_input_tokens":1000}}}`
+	writeFile(t, p, strings.Join([]string{
+		fmt.Sprintf(line, 1, "thinking"), fmt.Sprintf(line, 2, "tool_use"), fmt.Sprintf(line, 3, "text"),
+	}, "\n"))
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.AssistantMsgs != 1 || s.Tokens != 1030 {
+		t.Errorf("want 1 response billed once (1030 tokens), got %d responses / %d tokens", s.AssistantMsgs, s.Tokens)
+	}
+	if s.ToolCalls != 1 {
+		t.Errorf("tool calls = %d, want 1 (blocks are still counted per line)", s.ToolCalls)
+	}
+}
+
+func TestParseSession_ActiveTimeSkipsIdleGaps(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "g.jsonl")
+	u := `{"type":"user","timestamp":"%s","message":{"role":"user","content":"hi"}}`
+	a := `{"type":"assistant","timestamp":"%s","message":{"id":"%s","model":"claude-opus-5","content":[],"usage":{"input_tokens":100}}}`
+	writeFile(t, p, strings.Join([]string{
+		fmt.Sprintf(u, "2026-08-18T10:00:00Z"),
+		fmt.Sprintf(a, "2026-08-18T10:05:00Z", "a"), // +5m
+		fmt.Sprintf(u, "2026-08-19T10:00:00Z"),      // a day idle: not counted, new day
+		fmt.Sprintf(a, "2026-08-19T10:10:00Z", "b"), // +10m
+	}, "\n"))
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ActiveTime != 15*time.Minute {
+		t.Errorf("active time = %s, want 15m (idle gap excluded)", s.ActiveTime)
+	}
+	if len(s.Daily) != 2 {
+		t.Errorf("usage should land on both days it happened, got %v", s.Daily)
+	}
+}
+
+func TestParseSession_SubagentsBillToParent(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "parent.jsonl")
+	writeFile(t, p, `{"type":"user","timestamp":"2026-08-19T10:00:00Z","cwd":"/r","message":{"role":"user","content":"do it"}}`+"\n"+
+		`{"type":"assistant","timestamp":"2026-08-19T10:00:01Z","message":{"id":"p1","model":"claude-opus-5","content":[],"usage":{"input_tokens":100}}}`)
+	writeFile(t, filepath.Join(dir, "parent", "subagents", "agent-1.jsonl"),
+		`{"type":"user","timestamp":"2026-08-19T10:00:02Z","message":{"role":"user","content":"sub prompt"}}`+"\n"+
+			`{"type":"assistant","timestamp":"2026-08-19T10:00:03Z","message":{"id":"s1","model":"claude-haiku-4-5","content":[],"usage":{"input_tokens":900}}}`)
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Tokens != 1000 || s.AssistantMsgs != 2 {
+		t.Errorf("sub-agent usage should bill to the parent: tokens=%d responses=%d", s.Tokens, s.AssistantMsgs)
+	}
+	if s.Prompts != 1 || s.Title != "do it" {
+		t.Errorf("sub-agent prompts must not count as yours: prompts=%d title=%q", s.Prompts, s.Title)
+	}
+	if s.Model != "claude-opus-5" {
+		t.Errorf("model should come from the main transcript, got %q", s.Model)
+	}
+}
+
+func TestParseSession_TitleSkipsHarnessWrappers(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "w.jsonl")
+	writeFile(t, p, strings.Join([]string{
+		`{"type":"user","timestamp":"2026-08-19T10:00:00Z","cwd":"/r","message":{"role":"user","content":"<command-name>/model</command-name><command-message>model</command-message><command-args>opus</command-args>"}}`,
+		`{"type":"user","timestamp":"2026-08-19T10:00:01Z","message":{"role":"user","content":[{"type":"text","text":"<ide_selection>The user selected lines 1 to 2</ide_selection>\n<some_new_tag>x</some_new_tag>why is the build failing?"}]}}`,
+	}, "\n"))
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Title != "why is the build failing?" {
+		t.Errorf("title = %q, want the first real prompt", s.Title)
+	}
+	if s.Prompts != 1 {
+		t.Errorf("prompts = %d, want 1 (a slash command isn't a prompt)", s.Prompts)
+	}
+	// a session that only ever ran a slash command shows the command as its title
+	q := filepath.Join(t.TempDir(), "c.jsonl")
+	writeFile(t, q, `{"type":"user","timestamp":"2026-08-19T10:00:00Z","message":{"role":"user","content":"<command-name>/model</command-name><command-message>model</command-message>"}}`)
+	if c, _ := parseSession(q); c.Title != "/model" || c.Prompts != 0 {
+		t.Errorf("command-only session: title=%q prompts=%d, want /model and 0", c.Title, c.Prompts)
+	}
+}
+
+func TestPriceFor(t *testing.T) {
+	for _, id := range []string{"claude-opus-4-8", "claude-haiku-4-5-20251001", "sonnet", "haiku", "opus"} {
+		if _, ok := priceFor(id); !ok {
+			t.Errorf("%s should resolve to a price", id)
+		}
+	}
+	if _, ok := priceFor("<synthetic>"); ok {
+		t.Error("<synthetic> must not price")
+	}
+}
+
+func TestRepoName(t *testing.T) {
+	if got := repoName("/Users/me/github/foo/.claude/worktrees/fix-auth"); got != "foo" {
+		t.Errorf("worktree cwd should roll up to its repo, got %q", got)
+	}
+	if got := repoName("/Users/me/github/foo"); got != "foo" {
+		t.Errorf("plain cwd = %q", got)
+	}
+}
+
+func TestUsageOf(t *testing.T) {
+	day := func(d int) string { return time.Now().AddDate(0, 0, -d).Format(dayLayout) }
+	sessions := []Session{
+		{Repo: "a", Model: "claude-opus-5", Tokens: 300, Cost: 3, Daily: map[string]DayUsage{day(0): {100, 1}, day(10): {200, 2}}},
+		{Repo: "b", Model: "claude-opus-5", Tokens: 50, Cost: 0.5, Daily: map[string]DayUsage{day(40): {50, 0.5}}},
+	}
+	u := UsageOf(sessions)
+	today, week, month := u.Windows[0], u.Windows[1], u.Windows[2]
+	if today.Tokens != 100 || today.Sessions != 1 {
+		t.Errorf("today = %+v, want 100 tokens / 1 session", today)
+	}
+	if week.Tokens != 100 || month.Tokens != 300 || month.Sessions != 1 {
+		t.Errorf("week=%+v month=%+v", week, month)
+	}
+	if len(u.ByDay) != 2 {
+		t.Errorf("by-day should only hold the last 30 days, got %d rows", len(u.ByDay))
+	}
+	if u.ByProject[0].Key != "a" || u.ByProject[0].Tokens != 300 || len(u.ByProject) != 2 {
+		t.Errorf("by-project = %+v", u.ByProject)
+	}
+}
+
+func TestParseWorktreeList(t *testing.T) {
+	raw := "worktree /r\nHEAD aaaaaaaaaaaa\nbranch refs/heads/main\n\nworktree /r/.claude/worktrees/wt\nHEAD bbbbbbbbbbbb\nbranch refs/heads/feat/x\n\nworktree /tmp/other\nHEAD cccccccccccc\ndetached\n"
+	// invoked from the linked worktree: git still lists the main checkout first
+	got := parseWorktreeList("/r/.claude/worktrees/wt", raw)
+	if len(got) != 2 {
+		t.Fatalf("want 2 linked worktrees (main skipped), got %+v", got)
+	}
+	if got[0].Path != "/r/.claude/worktrees/wt" || got[0].Branch != "feat/x" || got[0].Head != "bbbbbbb" || !got[0].Claude {
+		t.Errorf("first = %+v", got[0])
+	}
+	if !got[1].Detached || got[1].Claude {
+		t.Errorf("second = %+v", got[1])
+	}
 }

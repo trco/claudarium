@@ -14,7 +14,7 @@ import (
 // fileDate returns a file's modification date as YYYY-MM-DD (empty if missing).
 func fileDate(path string) string {
 	if fi, err := os.Stat(path); err == nil {
-		return fi.ModTime().Format("2006-01-02")
+		return fi.ModTime().Format(dayLayout)
 	}
 	return ""
 }
@@ -175,13 +175,13 @@ func firstNonEmpty(a, b string) string {
 // ---- Plugins & marketplaces ----
 
 type Plugin struct {
-	Name        string // full id: plugin@marketplace
-	Base        string // plugin part (before @)
-	Marketplace string // marketplace part (after @)
-	Version     string
-	Scope       string
-	ProjectPath string
-	Enabled     bool
+	Name         string // full id: plugin@marketplace
+	Base         string // plugin part (before @)
+	Marketplace  string // marketplace part (after @)
+	Version      string
+	Scope        string
+	ProjectPath  string
+	Enabled      bool
 	InstallPath  string
 	Installed    string // installedAt date (YYYY-MM-DD)
 	Updated      string // lastUpdated date (YYYY-MM-DD)
@@ -195,8 +195,8 @@ type Plugin struct {
 }
 
 type Marketplace struct {
-	Name       string
-	SourceType string
+	Name         string
+	SourceType   string
 	Location     string
 	AutoUpdate   bool
 	Updated      string // lastUpdated date (YYYY-MM-DD)
@@ -222,14 +222,14 @@ func Plugins() []Plugin {
 				installPath := inst.Get("installPath").String()
 				mani := pluginManifest(installPath)
 				out = append(out, Plugin{
-					Name:        name.String(),
-					Base:        base,
-					Marketplace: market,
-					Version:     inst.Get("version").String(),
-					Scope:       inst.Get("scope").String(),
-					ProjectPath: inst.Get("projectPath").String(),
-					Enabled:     enabled[name.String()],
-					InstallPath: installPath,
+					Name:         name.String(),
+					Base:         base,
+					Marketplace:  market,
+					Version:      inst.Get("version").String(),
+					Scope:        inst.Get("scope").String(),
+					ProjectPath:  inst.Get("projectPath").String(),
+					Enabled:      enabled[name.String()],
+					InstallPath:  installPath,
 					Installed:    shortDate(inst.Get("installedAt").String()),
 					Updated:      shortDate(inst.Get("lastUpdated").String()),
 					UpdatedStale: olderThan(inst.Get("lastUpdated").String(), 3),
@@ -327,9 +327,9 @@ func Marketplaces() []Marketplace {
 			loc = src.Get("url").String()
 		}
 		out = append(out, Marketplace{
-			Name:       name.String(),
-			SourceType: src.Get("source").String(),
-			Location:   loc,
+			Name:         name.String(),
+			SourceType:   src.Get("source").String(),
+			Location:     loc,
 			AutoUpdate:   m.Get("autoUpdate").Bool(),
 			Updated:      shortDate(m.Get("lastUpdated").String()),
 			UpdatedStale: olderThan(m.Get("lastUpdated").String(), 3),
@@ -585,4 +585,23 @@ func ProjectPaths() []string {
 	})
 	sort.Strings(paths)
 	return paths
+}
+
+// ---- shared path/time helpers ----
+
+const (
+	dayLayout    = "2006-01-02"
+	minuteLayout = "2006-01-02 15:04"
+)
+
+// underDir reports whether p is dir itself or lives inside it.
+func underDir(p, dir string) bool {
+	p = filepath.Clean(p)
+	return p == dir || strings.HasPrefix(p, dir+string(filepath.Separator))
+}
+
+// isClaudeWorktree reports whether p is inside a Claude-created checkout
+// (<repo>/.claude/worktrees/<name>).
+func isClaudeWorktree(p string) bool {
+	return strings.Contains(p, string(filepath.Separator)+filepath.Join(".claude", "worktrees")+string(filepath.Separator))
 }

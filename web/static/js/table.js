@@ -160,6 +160,8 @@ document.addEventListener('alpine:init', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'path=' + encodeURIComponent(path),
+      }).then((r) => {
+        if (!r.ok) r.text().then((t) => alert('Could not reveal: ' + t));
       });
     },
     viewRaw(path) {

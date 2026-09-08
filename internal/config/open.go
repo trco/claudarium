@@ -16,7 +16,7 @@ func RevealFile(path string) error {
 		return errors.New("path must be absolute")
 	}
 	clean := filepath.Clean(path)
-	if clean != Home() && !strings.HasPrefix(clean, Home()+string(filepath.Separator)) {
+	if !underDir(clean, Home()) {
 		return errors.New("path is outside home directory")
 	}
 	if !fileExists(clean) && !dirExists(clean) {
@@ -34,7 +34,7 @@ func ReadTextFile(path string) ([]byte, error) {
 		return nil, errors.New("path must be absolute")
 	}
 	clean := filepath.Clean(path)
-	if clean != Home() && !strings.HasPrefix(clean, Home()+string(filepath.Separator)) {
+	if !underDir(clean, Home()) {
 		return nil, errors.New("path is outside home directory")
 	}
 	if !strings.HasSuffix(strings.ToLower(clean), ".md") {

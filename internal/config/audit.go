@@ -82,7 +82,7 @@ func AuditEntries() []AuditEntry {
 	all := readAudit() // chronological (append order)
 	var mem []int
 	for i := range all {
-		all[i].When = time.Unix(all[i].Unix, 0).Format("2006-01-02 15:04:05")
+		all[i].When = time.Unix(all[i].Unix, 0).Format(minuteLayout + ":05")
 		if all[i].Kind == "memory" && all[i].Backup != "" {
 			mem = append(mem, i)
 		}
@@ -192,6 +192,4 @@ func DeleteBackup(path string) error {
 	return os.Remove(clean)
 }
 
-func underHome(clean string) bool {
-	return clean == Home() || strings.HasPrefix(clean, Home()+string(filepath.Separator))
-}
+func underHome(clean string) bool { return underDir(clean, Home()) }
