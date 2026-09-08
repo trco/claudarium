@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -386,22 +387,41 @@ var (
 // SessionsDir is where Claude Code keeps transcripts.
 func SessionsDir() string { return filepath.Join(ClaudeDir(), "projects") }
 
-// transcriptPaths lists every top-level session transcript
-// (projects/<cwd>/<id>.jsonl); sub-agent files hang off their session.
+// transcriptPaths lists every session transcript under projects/ at any
+// depth — Claude nests project dirs (…/<cwd>/<other-cwd>/<id>.jsonl) — while
+// skipping sub-agent files, which hang off their session. If the same session
+// id exists at two paths, the most recently modified copy wins.
 func transcriptPaths() []string {
-	var out []string
-	dirs, _ := os.ReadDir(SessionsDir())
-	for _, d := range dirs {
-		if !d.IsDir() {
-			continue
+	newest := map[string]string{}
+	newestAt := map[string]time.Time{}
+	filepath.WalkDir(SessionsDir(), func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
 		}
-		files, _ := os.ReadDir(filepath.Join(SessionsDir(), d.Name()))
-		for _, f := range files {
-			if !f.IsDir() && strings.HasSuffix(f.Name(), ".jsonl") {
-				out = append(out, filepath.Join(SessionsDir(), d.Name(), f.Name()))
+		if d.IsDir() {
+			if d.Name() == "subagents" {
+				return filepath.SkipDir
 			}
+			return nil
 		}
+		if !strings.HasSuffix(d.Name(), ".jsonl") {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		id := strings.TrimSuffix(d.Name(), ".jsonl")
+		if at, ok := newestAt[id]; !ok || info.ModTime().After(at) {
+			newest[id], newestAt[id] = p, info.ModTime()
+		}
+		return nil
+	})
+	out := make([]string, 0, len(newest))
+	for _, p := range newest {
+		out = append(out, p)
 	}
+	sort.Strings(out)
 	return out
 }
 
@@ -425,7 +445,7 @@ func signatureOf(transcript string) (sig, bool) {
 // SessionCount is the number of transcripts on disk (cheap — no parsing).
 func SessionCount() int { return len(transcriptPaths()) }
 
-// Sessions returns every session, most recently active first. Unchanged
+// Sessions returns every session, most recently started first. Unchanged
 // transcripts come from the cache; new/changed ones are parsed 8 at a time.
 // The cache is rebuilt each call, so deleted transcripts drop out.
 func Sessions() []Session {
@@ -481,7 +501,7 @@ func Sessions() []Session {
 	}
 	sessCache = next
 
-	sort.Slice(out, func(i, j int) bool { return out[i].Ended.After(out[j].Ended) })
+	sort.Slice(out, func(i, j int) bool { return out[i].Started.After(out[j].Started) })
 	return out
 }
 

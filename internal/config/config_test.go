@@ -565,3 +565,26 @@ func TestParseWorktreeList(t *testing.T) {
 		t.Errorf("second = %+v", got[1])
 	}
 }
+
+func TestTranscriptPaths_NestedAndDeduped(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+	p := filepath.Join(home, ".claude", "projects")
+	writeFile(t, filepath.Join(p, "a", "x.jsonl"), "")
+	writeFile(t, filepath.Join(p, "a", "b", "y.jsonl"), "")                    // nested project dir
+	writeFile(t, filepath.Join(p, "a", "x", "subagents", "agent-1.jsonl"), "") // belongs to x, not a session
+	writeFile(t, filepath.Join(p, "a", "z.jsonl"), "")                         // duplicate id, older copy
+	writeFile(t, filepath.Join(p, "a", "b", "z.jsonl"), "")                    // duplicate id, newer copy
+	oldT := time.Now().Add(-time.Hour)
+	os.Chtimes(filepath.Join(p, "a", "z.jsonl"), oldT, oldT)
+
+	got := transcriptPaths()
+	if len(got) != 3 {
+		t.Fatalf("want x, y, z (nested found, sub-agent excluded, duplicate collapsed); got %v", got)
+	}
+	if !contains(got, filepath.Join(p, "a", "b", "z.jsonl")) {
+		t.Errorf("duplicate id should resolve to the newest copy, got %v", got)
+	}
+}
