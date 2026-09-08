@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -24,7 +25,8 @@ type Session struct {
 	Project  string // cwd the session ran in
 	Repo     string `json:"-"` // repo name; a Claude worktree maps to its repo
 	Branch   string
-	Title    string    // first real prompt (or Claude's own summary, when present)
+	Title    string    // your rename, else Claude's title, else the first prompt
+	Prompt   string    `json:"First prompt"`
 	Model    string    // model of the last assistant turn
 	Started  time.Time `json:"-"`
 	Ended    time.Time `json:"-"`
@@ -112,13 +114,15 @@ func cost(model string, in, out, cw, cr int64) float64 {
 
 // tRecord is the subset of a transcript line we care about.
 type tRecord struct {
-	Type      string `json:"type"`
-	Timestamp string `json:"timestamp"`
-	Cwd       string `json:"cwd"`
-	GitBranch string `json:"gitBranch"`
-	Summary   string `json:"summary"`
-	IsMeta    bool   `json:"isMeta"`
-	Message   struct {
+	Type        string `json:"type"`
+	Timestamp   string `json:"timestamp"`
+	Cwd         string `json:"cwd"`
+	GitBranch   string `json:"gitBranch"`
+	Summary     string `json:"summary"`
+	CustomTitle string `json:"customTitle"` // type=custom-title: what you renamed the session to
+	AITitle     string `json:"aiTitle"`     // type=ai-title: Claude's own name for it
+	IsMeta      bool   `json:"isMeta"`
+	Message     struct {
 		ID      string          `json:"id"`
 		Model   string          `json:"model"`
 		Content json.RawMessage `json:"content"`
@@ -166,10 +170,11 @@ func subagentPaths(transcript string) []string {
 }
 
 type parseState struct {
-	s        Session
-	seen     map[string]bool // message.id already billed
-	summary  string
-	fallback string // a slash command, used as the title only if nothing was typed
+	s          Session
+	seen       map[string]bool // message.id already billed
+	custom, ai string          // last custom-title / ai-title seen (later records win)
+	summary    string
+	fallback   string // a slash command, used as the title only if nothing was typed
 }
 
 // ingest folds one transcript into the session. Only the main transcript
@@ -221,6 +226,14 @@ func (st *parseState) ingest(path string, main bool) error {
 			if main && r.Summary != "" {
 				st.summary = r.Summary
 			}
+		case "custom-title":
+			if main && r.CustomTitle != "" {
+				st.custom = r.CustomTitle
+			}
+		case "ai-title":
+			if main && r.AITitle != "" {
+				st.ai = r.AITitle
+			}
 		case "user":
 			if !main || r.IsMeta {
 				continue
@@ -231,8 +244,8 @@ func (st *parseState) ingest(path string, main bool) error {
 			}
 			if text := cleanTitle(raw); text != "" {
 				s.Prompts++
-				if s.Title == "" {
-					s.Title = text
+				if s.Prompt == "" {
+					s.Prompt = text
 				}
 			} else if st.fallback == "" {
 				st.fallback = commandName(raw)
@@ -277,19 +290,13 @@ func (st *parseState) ingest(path string, main bool) error {
 
 func (st *parseState) finish() Session {
 	s := st.s
-	if st.summary != "" {
-		s.Title = st.summary
-	}
-	if s.Title == "" {
-		s.Title = firstNonEmpty(st.fallback, "(no prompt)")
-	}
+	s.Title = first(st.custom, st.ai, st.summary, s.Prompt, st.fallback, "(no prompt)")
 	if s.Project == "" {
 		s.Project = filepath.Base(filepath.Dir(s.Path))
 	}
 	s.Worktree = isClaudeWorktree(s.Project)
 	s.Repo = repoName(s.Project)
 	s.Tokens = s.InputTokens + s.OutputTokens + s.CacheWrite + s.CacheRead
-	s.Active = !s.Ended.IsZero() && time.Since(s.Ended) < 5*time.Minute
 	s.StartedFmt = s.Started.Local().Format(minuteLayout)
 	s.EndedFmt = s.Ended.Local().Format(minuteLayout)
 	s.DurationFmt = fmtDuration(s.ActiveTime)
@@ -384,6 +391,41 @@ var (
 	sessCache = map[string]cachedSession{}
 )
 
+// first returns the first non-empty string.
+func first(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// liveSessionIDs reads ~/.claude/sessions/<pid>.json — one per running Claude
+// process — and returns the session ids whose process is still alive.
+func liveSessionIDs() map[string]bool {
+	out := map[string]bool{}
+	files, _ := filepath.Glob(filepath.Join(ClaudeDir(), "sessions", "*.json"))
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var meta struct {
+			PID       int    `json:"pid"`
+			SessionID string `json:"sessionId"`
+		}
+		if json.Unmarshal(b, &meta) != nil || meta.SessionID == "" {
+			continue
+		}
+		if err := syscall.Kill(meta.PID, 0); meta.PID > 0 && err != nil && err != syscall.EPERM {
+			continue // the process is gone; the file is stale
+		}
+		out[meta.SessionID] = true
+	}
+	return out
+}
+
 // SessionsDir is where Claude Code keeps transcripts.
 func SessionsDir() string { return filepath.Join(ClaudeDir(), "projects") }
 
@@ -445,7 +487,8 @@ func signatureOf(transcript string) (sig, bool) {
 // SessionCount is the number of transcripts on disk (cheap — no parsing).
 func SessionCount() int { return len(transcriptPaths()) }
 
-// Sessions returns every session, most recently started first. Unchanged
+// Sessions returns every session: running ones first, then the rest, each
+// newest-started first. Unchanged
 // transcripts come from the cache; new/changed ones are parsed 8 at a time.
 // The cache is rebuilt each call, so deleted transcripts drop out.
 func Sessions() []Session {
@@ -465,7 +508,6 @@ func Sessions() []Session {
 			continue
 		}
 		if c, ok := sessCache[p]; ok && c.sig == sg {
-			c.s.Active = !c.s.Ended.IsZero() && time.Since(c.s.Ended) < 5*time.Minute
 			next[p] = c
 			out = append(out, c.s)
 			continue
@@ -501,8 +543,21 @@ func Sessions() []Session {
 	}
 	sessCache = next
 
-	sort.Slice(out, func(i, j int) bool { return out[i].Started.After(out[j].Started) })
+	live := liveSessionIDs()
+	for i := range out {
+		out[i].Active = live[out[i].ID] || (!out[i].Ended.IsZero() && time.Since(out[i].Ended) < 5*time.Minute)
+	}
+	sort.Slice(out, func(i, j int) bool { return sessionBefore(out[i], out[j]) })
 	return out
+}
+
+// sessionBefore orders running sessions first, then everything else — each
+// group newest-started first.
+func sessionBefore(a, b Session) bool {
+	if a.Active != b.Active {
+		return a.Active
+	}
+	return a.Started.After(b.Started)
 }
 
 // Warm builds the session and worktree indexes; run once at startup in a

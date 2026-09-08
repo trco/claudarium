@@ -53,7 +53,7 @@ func Search(q string) []SearchResult {
 		}
 	}
 	for _, s := range Sessions() {
-		if match(s.Title, s.Repo, s.Branch, s.Project) {
+		if match(s.Title, s.Prompt, s.Repo, s.Branch, s.Project) {
 			out = append(out, SearchResult{"session", s.Title, s.Repo + " · " + s.Branch + " · " + s.StartedFmt, "repo:" + s.Project, s.Path})
 		}
 	}

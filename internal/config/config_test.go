@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -401,8 +402,8 @@ func TestParseSession(t *testing.T) {
 	if s.ID != "abc" || s.Project != "/repo/x" || s.Branch != "main" || s.Repo != "x" {
 		t.Errorf("meta wrong: %+v", s)
 	}
-	if s.Title != "Fix the runner crash" {
-		t.Errorf("title = %q, want first line of first prompt", s.Title)
+	if s.Title != "Fix the runner crash" || s.Prompt != s.Title {
+		t.Errorf("title = %q prompt = %q, want first line of first prompt", s.Title, s.Prompt)
 	}
 	if s.Prompts != 1 || s.AssistantMsgs != 2 || s.ToolCalls != 1 {
 		t.Errorf("counts wrong: prompts=%d (tool results must not count) assistant=%d tools=%d", s.Prompts, s.AssistantMsgs, s.ToolCalls)
@@ -586,5 +587,61 @@ func TestTranscriptPaths_NestedAndDeduped(t *testing.T) {
 	}
 	if !contains(got, filepath.Join(p, "a", "b", "z.jsonl")) {
 		t.Errorf("duplicate id should resolve to the newest copy, got %v", got)
+	}
+}
+
+func TestParseSession_TitlePrecedence(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "t.jsonl")
+	writeFile(t, p, strings.Join([]string{
+		`{"type":"user","timestamp":"2026-08-19T10:00:00Z","cwd":"/r","message":{"role":"user","content":"look at ticket 42"}}`,
+		`{"type":"ai-title","aiTitle":"Investigate ticket 42"}`,
+		`{"type":"custom-title","customTitle":"Support ticket: Draft"}`,
+		`{"type":"custom-title","customTitle":"Support ticket: LinkedInPersonal"}`,
+	}, "\n"))
+	s, err := parseSession(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.Title != "Support ticket: LinkedInPersonal" {
+		t.Errorf("title = %q, want the latest rename", s.Title)
+	}
+	if s.Prompt != "look at ticket 42" {
+		t.Errorf("first prompt should be kept separately, got %q", s.Prompt)
+	}
+	q := filepath.Join(t.TempDir(), "u.jsonl")
+	writeFile(t, q, `{"type":"user","timestamp":"2026-08-19T10:00:00Z","message":{"role":"user","content":"hi"}}`+"\n"+`{"type":"ai-title","aiTitle":"Claude's name"}`)
+	if c, _ := parseSession(q); c.Title != "Claude's name" {
+		t.Errorf("without a rename, Claude's title wins over the prompt; got %q", c.Title)
+	}
+}
+
+func TestLiveSessionIDs(t *testing.T) {
+	home := t.TempDir()
+	old := Home
+	Home = func() string { return home }
+	defer func() { Home = old }()
+	writeFile(t, filepath.Join(home, ".claude", "sessions", "1.json"), fmt.Sprintf(`{"pid":%d,"sessionId":"live"}`, os.Getpid()))
+	writeFile(t, filepath.Join(home, ".claude", "sessions", "2.json"), `{"pid":2147483000,"sessionId":"dead"}`)
+	live := liveSessionIDs()
+	if !live["live"] || live["dead"] {
+		t.Errorf("want only the session whose process is alive, got %v", live)
+	}
+}
+
+func TestSessionBefore_RunningFirstThenNewest(t *testing.T) {
+	d := func(day int) time.Time { return time.Date(2026, 9, day, 0, 0, 0, 0, time.UTC) }
+	in := []Session{
+		{ID: "old-idle", Started: d(1)},
+		{ID: "new-idle", Started: d(8)},
+		{ID: "old-live", Started: d(2), Active: true},
+		{ID: "new-live", Started: d(7), Active: true},
+	}
+	sort.Slice(in, func(i, j int) bool { return sessionBefore(in[i], in[j]) })
+	var got []string
+	for _, s := range in {
+		got = append(got, s.ID)
+	}
+	if want := "new-live old-live new-idle old-idle"; strings.Join(got, " ") != want {
+		t.Errorf("order = %v, want %s", got, want)
 	}
 }
